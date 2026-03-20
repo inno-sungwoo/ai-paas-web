@@ -19,7 +19,12 @@ export const useGetHelmRepos = () => {
 export const useGetCharts = (repoName: string) => {
   const { data, isPending, isError } = useQuery({
     queryKey: ['charts', repoName],
-    queryFn: () => api.get<ChartList>(`charts/${repoName}`).json(),
+    queryFn: async () => {
+      const res = await api.get(`charts/${repoName}`).json<{ data: ChartList } | ChartList>();
+      return 'data' in res && 'charts' in (res as { data: ChartList }).data
+        ? (res as { data: ChartList }).data
+        : (res as ChartList);
+    },
     enabled: !!repoName,
   });
   return { chartList: data, isPending, isError };
@@ -31,7 +36,9 @@ export const useGetChartDetail = (repoName: string, chartName: string, version?:
     queryFn: () => {
       const searchParams: Record<string, string> = {};
       if (version) searchParams.version = version;
-      return api.get<ChartDetail>(`charts/${repoName}/${chartName}/detail`, { searchParams }).json();
+      return api
+        .get<ChartDetail>(`charts/${repoName}/${chartName}/detail`, { searchParams })
+        .json();
     },
     enabled: !!repoName && !!chartName,
   });
