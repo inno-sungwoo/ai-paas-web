@@ -1,33 +1,34 @@
 import { Table, useTablePagination } from '@innogrid/ui';
-import type { ReleaseStatus } from '@/types/monitoring';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 
-interface GpuStatusTableProps {
-  releases: ReleaseStatus[];
-  isPending: boolean;
+interface GpuCard {
+  uuid: string;
+  name: string;
+  driverVersion: string;
+  utilization: number;
+  memoryUtilization: number;
+  temperature: number;
+  powerDraw: number;
+  vramUsedMb: number;
+  vramTotalMb: number;
+  fanSpeed: number;
 }
 
 const columns = [
   {
     id: 'name',
-    header: '서비스',
-    accessorFn: (row: ReleaseStatus) => row.name,
-    size: 200,
+    header: 'GPU 모델',
+    accessorFn: (row: GpuCard) => row.name,
+    size: 220,
   },
   {
-    id: 'gpuName',
-    header: 'GPU',
-    accessorFn: (row: ReleaseStatus) => row.gpuName ?? '-',
-    size: 180,
-  },
-  {
-    id: 'gpuUtil',
-    header: '활용률(%)',
-    accessorFn: (row: ReleaseStatus) =>
-      row.gpuUtil != null ? `${row.gpuUtil.toFixed(1)}%` : '-',
-    size: 120,
-    cell: ({ row }: { row: { original: ReleaseStatus } }) => {
-      const val = row.original.gpuUtil;
-      if (val == null) return '-';
+    id: 'utilization',
+    header: '활용률',
+    accessorFn: (row: GpuCard) => `${row.utilization.toFixed(1)}%`,
+    size: 100,
+    cell: ({ row }: { row: { original: GpuCard } }) => {
+      const val = row.original.utilization;
       const isLow = val < 20;
       return (
         <span className={isLow ? 'font-semibold text-yellow-600' : ''}>
@@ -37,49 +38,73 @@ const columns = [
     },
   },
   {
-    id: 'gpuTemp',
+    id: 'temperature',
     header: '온도',
-    accessorFn: (row: ReleaseStatus) =>
-      row.gpuTemp != null ? `${row.gpuTemp}°C` : '-',
-    size: 100,
+    accessorFn: (row: GpuCard) => `${row.temperature}°C`,
+    size: 80,
   },
   {
-    id: 'gpuPowerWatt',
-    header: '전력(W)',
-    accessorFn: (row: ReleaseStatus) =>
-      row.gpuPowerWatt != null ? `${row.gpuPowerWatt}W` : '-',
-    size: 100,
+    id: 'powerDraw',
+    header: '전력',
+    accessorFn: (row: GpuCard) => `${row.powerDraw.toFixed(1)}W`,
+    size: 80,
   },
   {
     id: 'vram',
     header: 'VRAM',
-    accessorFn: (row: ReleaseStatus) => {
-      if (row.vramUsedMb != null && row.vramTotalMb != null) {
-        return `${row.vramUsedMb} / ${row.vramTotalMb} MB`;
-      }
-      return '-';
-    },
+    accessorFn: (row: GpuCard) =>
+      `${Math.round(row.vramUsedMb)} / ${Math.round(row.vramTotalMb)} MB`,
     size: 160,
+  },
+  {
+    id: 'fanSpeed',
+    header: '팬',
+    accessorFn: (row: GpuCard) => `${row.fanSpeed.toFixed(0)}%`,
+    size: 60,
+  },
+  {
+    id: 'driverVersion',
+    header: '드라이버',
+    accessorFn: (row: GpuCard) => row.driverVersion,
+    size: 120,
   },
 ];
 
-export const GpuStatusTable = ({ releases, isPending }: GpuStatusTableProps) => {
+interface GpuStatusTableProps {
+  cluster: string;
+}
+
+export const GpuStatusTable = ({ cluster }: GpuStatusTableProps) => {
   const { pagination, setPagination } = useTablePagination();
-  const gpuReleases = releases.filter((r) => r.gpuUtil != null || r.gpuName);
+  const { data, isPending } = useQuery({
+    queryKey: ['monitoring', 'gpu-status', cluster],
+    queryFn: () =>
+      api.get<GpuCard[]>('monit/monitoring/gpu-status', { searchParams: { cluster } }).json(),
+    refetchInterval: 30000,
+    enabled: !!cluster,
+  });
+
+  const gpuCards = data ?? [];
 
   if (isPending) {
-    return <div className="flex items-center justify-center py-8 text-sm text-[#999]">로딩 중...</div>;
+    return (
+      <div className="flex items-center justify-center py-8 text-sm text-[#999]">로딩 중...</div>
+    );
   }
 
-  if (gpuReleases.length === 0) {
-    return <div className="flex items-center justify-center py-8 text-sm text-[#999]">GPU 데이터가 없습니다.</div>;
+  if (gpuCards.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-8 text-sm text-[#999]">
+        GPU 데이터가 없습니다.
+      </div>
+    );
   }
 
   return (
     <Table
       columns={columns}
-      data={gpuReleases}
-      totalCount={gpuReleases.length}
+      data={gpuCards}
+      totalCount={gpuCards.length}
       pagination={pagination}
       setPagination={setPagination}
     />

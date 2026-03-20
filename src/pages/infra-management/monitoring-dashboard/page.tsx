@@ -477,7 +477,7 @@ export default function MonitoringPage() {
         <div className="page-detail-round-box page-mt-16">
           <div className="page-detail-round-name">GPU 현황</div>
           <div className="page-detail-round-data">
-            <GpuStatusTable releases={releases} isPending={releasesLoading} />
+            <GpuStatusTable cluster={cluster} />
           </div>
         </div>
 
