@@ -240,3 +240,151 @@
     }
   }
 }
+//catalog
+.flexBox {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  width: 100%;
+}
+
+.catalogBox {
+  width: 536px;
+  height: 234px;
+  border-radius: 8px;
+  border: 1px solid $color-gray-75;
+}
+
+.catalogInfo {
+  display: flex;
+  gap: 24px;
+  padding: 24px;
+}
+
+.catalogImg {
+  width: 84px;
+  height: 84px;
+  aspect-ratio: 1/1;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid $color-gray-50;
+}
+
+.catalogDesc {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1 0 0;
+}
+
+.catalogTit {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+
+  & > p {
+    width: 200px;
+    color: $page-font-color-900;
+    font-size: $page-font-13;
+    @include font-style;
+    font-weight: 600;
+    @include ellipsis(1);
+  }
+
+  & > span {
+    color: $page-font-color-300;
+    font-size: $page-font-root;
+    @include font-style;
+  }
+}
+
+.catalogTxt {
+  width: 380px;
+  color: $page-font-color-600;
+  font-size: $page-font-root;
+  @include font-style;
+  font-weight: 600;
+  @include ellipsis(3);
+}
+
+.catalogKeyword {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+}
+
+.catalogKeywordDetail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+
+  & > span {
+    display: flex;
+    height: 24px;
+    padding: 10px 6px;
+    justify-content: center;
+    align-items: center;
+    border-radius: 2px;
+    background: $color-gray-25;
+    color: $page-font-color-300;
+    font-size: $page-font-root;
+    @include font-style;
+  }
+}
+
+.btnKeywordNum {
+  display: flex;
+  width: 34px;
+  height: 24px;
+  padding: 10px 6px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 20px;
+  background: $color-gray-300;
+  color: $color-white;
+  font-size: $page-font-root;
+  @include font-style;
+
+  &:hover {
+    background: $color-gray-600;
+  }
+}
+
+.keywordNumList {
+  position: absolute;
+  right: 0;
+  top: 28px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid $color-gray-600;
+  background: $color-white;
+
+  & > span {
+    display: flex;
+    height: 28px;
+    padding: 10px;
+    align-items: center;
+    color: $page-font-color-600;
+    font-size: $page-font-root;
+    @include font-style;
+  }
+}
+
+.catalogBtns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  width: 100%;
+  padding: 16px 24px;
+  border-top: 1px solid $color-gray-50;
+}
+
+.paginationBox {
+  margin-top: 24px;
+}
