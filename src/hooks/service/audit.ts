@@ -2,11 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import type { AuditEvent } from '../../types/monitoring';
 
-export const useGetAuditEvents = (namespace: string) => {
+export const useGetAuditEvents = (cluster: string, namespace: string) => {
   const { data, isPending, isError } = useQuery({
-    queryKey: ['audit', 'events', namespace],
-    queryFn: () => api.get<AuditEvent[]>('audit/events', { searchParams: { namespace } }).json(),
-    enabled: !!namespace,
+    queryKey: ['audit', 'events', cluster, namespace],
+    queryFn: () =>
+      api.get<AuditEvent[]>('audit/events', { searchParams: { cluster, namespace } }).json(),
+    enabled: !!cluster && !!namespace,
   });
   return { events: data ?? [], isPending, isError };
 };

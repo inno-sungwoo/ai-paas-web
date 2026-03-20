@@ -12,44 +12,55 @@ import type { AuditEvent } from '@/types/monitoring';
 type OptionType = { text: string; value: string };
 
 const namespaceOptions = [
+  { text: 'ai-pass3', value: 'ai-pass3' },
+  { text: 'ai-platform', value: 'ai-platform' },
   { text: 'default', value: 'default' },
   { text: 'kube-system', value: 'kube-system' },
-  { text: 'mlops', value: 'mlops' },
-  { text: 'monitoring', value: 'monitoring' },
+  { text: 'prometheus-system', value: 'prometheus-system' },
+  { text: 'drift-detect', value: 'drift-detect' },
 ];
 
 const columns = [
-  { id: 'type', header: '유형', accessorFn: (row: AuditEvent) => row.type, size: 100 },
-  { id: 'reason', header: '사유', accessorFn: (row: AuditEvent) => row.reason, size: 150 },
+  {
+    id: 'type',
+    header: '유형',
+    accessorFn: (row: AuditEvent) => row.type,
+    size: 80,
+    cell: ({ row }: { row: { original: AuditEvent } }) => {
+      const t = row.original.type;
+      return (
+        <span
+          className={
+            t === 'Warning'
+              ? 'font-semibold text-yellow-600'
+              : t === 'Normal'
+                ? 'text-green-600'
+                : ''
+          }
+        >
+          {t}
+        </span>
+      );
+    },
+  },
+  { id: 'reason', header: '사유', accessorFn: (row: AuditEvent) => row.reason, size: 140 },
   {
     id: 'involvedObject',
     header: '관련 객체',
     accessorFn: (row: AuditEvent) => row.involvedObject,
-    size: 200,
-  },
-  {
-    id: 'namespace',
-    header: '네임스페이스',
-    accessorFn: (row: AuditEvent) => row.namespace,
-    size: 130,
+    size: 250,
   },
   {
     id: 'message',
     header: '메시지',
     accessorFn: (row: AuditEvent) => row.message,
-    size: 300,
+    size: 350,
     enableSorting: false,
   },
   {
-    id: 'firstTimestamp',
-    header: '최초 발생',
-    accessorFn: (row: AuditEvent) => row.firstTimestamp,
-    size: 180,
-  },
-  {
     id: 'lastTimestamp',
-    header: '최근 발생',
-    accessorFn: (row: AuditEvent) => row.lastTimestamp,
+    header: '발생 시간',
+    accessorFn: (row: AuditEvent) => row.lastTimestamp ?? row.firstTimestamp ?? '-',
     size: 180,
   },
 ];
@@ -58,8 +69,8 @@ export default function AuditLogPage() {
   const { pagination, setPagination } = useTablePagination();
   const [selectedValue, setSelectedValue] = useState<OptionType>(namespaceOptions[0]);
 
-  const namespace = selectedValue?.value ?? 'default';
-  const { events, isPending } = useGetAuditEvents(namespace);
+  const namespace = selectedValue?.value ?? 'ai-pass3';
+  const { events, isPending } = useGetAuditEvents('innogrid-aikube', namespace);
 
   const onChangeSelect = (option: SelectSingleValue<OptionType>) => {
     if (option) setSelectedValue(option);
