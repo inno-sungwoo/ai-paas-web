@@ -16,6 +16,7 @@ import {
   useGetMonitoringAlerts,
 } from '@/hooks/service/monitoring';
 import { HelmReleaseTable } from '@/components/features/monitoring/HelmReleaseTable';
+import { GpuStatusTable } from '@/components/features/monitoring/GpuStatusTable';
 
 type OptionType = { text: string; value: string };
 
@@ -469,6 +470,14 @@ export default function MonitoringPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* GPU Status */}
+        <div className="page-detail-round-box page-mt-16">
+          <div className="page-detail-round-name">GPU 현황</div>
+          <div className="page-detail-round-data">
+            <GpuStatusTable releases={releases} isPending={releasesLoading} />
           </div>
         </div>
 

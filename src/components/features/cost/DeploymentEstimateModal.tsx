@@ -3,9 +3,17 @@ import { useGetCostEstimate } from '@/hooks/service/cost';
 
 interface DeploymentEstimateModalProps {
   onClose: () => void;
+  onConfirm?: () => void;
+  confirmLabel?: string;
+  isConfirming?: boolean;
 }
 
-export const DeploymentEstimateModal = ({ onClose }: DeploymentEstimateModalProps) => {
+export const DeploymentEstimateModal = ({
+  onClose,
+  onConfirm,
+  confirmLabel = '배포',
+  isConfirming = false,
+}: DeploymentEstimateModalProps) => {
   const [gpuCount, setGpuCount] = useState(1);
   const [hours, setHours] = useState(24);
   const { costEstimate, isPending } = useGetCostEstimate(gpuCount, hours);
@@ -41,11 +49,15 @@ export const DeploymentEstimateModal = ({ onClose }: DeploymentEstimateModalProp
           <div className="mb-4 rounded-md bg-[#f5f5f5] p-4">
             <div className="flex justify-between text-sm">
               <span className="text-[#525252]">GPU 단가</span>
-              <span className="font-medium text-[#1a1a1a]">{costEstimate.unitPriceKrw.toLocaleString()}원/시간</span>
+              <span className="font-medium text-[#1a1a1a]">
+                {costEstimate.unitPriceKrw.toLocaleString()}원/시간
+              </span>
             </div>
             <div className="mt-2 flex justify-between text-sm">
               <span className="text-[#525252]">예상 총 비용</span>
-              <span className="text-lg font-bold text-[#1a1a1a]">{costEstimate.totalCostKrw.toLocaleString()}원</span>
+              <span className="text-lg font-bold text-[#1a1a1a]">
+                {costEstimate.totalCostKrw.toLocaleString()}원
+              </span>
             </div>
           </div>
         )}
@@ -57,6 +69,16 @@ export const DeploymentEstimateModal = ({ onClose }: DeploymentEstimateModalProp
           >
             닫기
           </button>
+          {onConfirm && (
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isConfirming}
+              className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {isConfirming ? '배포 중...' : confirmLabel}
+            </button>
+          )}
         </div>
       </div>
     </div>

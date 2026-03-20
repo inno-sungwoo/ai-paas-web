@@ -8,7 +8,12 @@ interface UsageReportTableProps {
 
 const columns = [
   { id: 'date', header: '날짜', accessorFn: (row: DailyEntry) => row.date, size: 150 },
-  { id: 'namespace', header: '네임스페이스', accessorFn: (row: DailyEntry) => row.namespace, size: 200 },
+  {
+    id: 'namespace',
+    header: '네임스페이스',
+    accessorFn: (row: DailyEntry) => row.namespace,
+    size: 200,
+  },
   {
     id: 'avgGpuUtil',
     header: '평균 GPU 활용률(%)',
@@ -21,13 +26,29 @@ const columns = [
     accessorFn: (row: DailyEntry) => row.costKrw.toLocaleString(),
     size: 150,
   },
+  {
+    id: 'verdict',
+    header: '판단',
+    accessorFn: (row: DailyEntry) => (row.avgGpuUtil >= 30 ? 'normal' : 'warning'),
+    size: 120,
+    cell: ({ row }: { row: { original: DailyEntry } }) => {
+      const isNormal = row.original.avgGpuUtil >= 30;
+      return isNormal ? (
+        <span className="text-green-600">정상</span>
+      ) : (
+        <span className="font-semibold text-yellow-600">종료 권고</span>
+      );
+    },
+  },
 ];
 
 export const UsageReportTable = ({ entries, isPending }: UsageReportTableProps) => {
   const { pagination, setPagination } = useTablePagination();
 
   if (isPending) {
-    return <div className="flex items-center justify-center py-8 text-sm text-[#999]">로딩 중...</div>;
+    return (
+      <div className="flex items-center justify-center py-8 text-sm text-[#999]">로딩 중...</div>
+    );
   }
 
   return (

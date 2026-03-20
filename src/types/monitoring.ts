@@ -13,6 +13,11 @@ export interface ReleaseStatus {
   chartVersion: string;
   updated: string;
   gpuUtil: number | null;
+  gpuName?: string;
+  gpuTemp?: number | null;
+  gpuPowerWatt?: number | null;
+  vramUsedMb?: number | null;
+  vramTotalMb?: number | null;
 }
 
 export interface Alert {
@@ -58,6 +63,52 @@ export interface CostEstimate {
   hours: number;
   unitPriceKrw: number;
   totalCostKrw: number;
+}
+
+export interface HelmRepo {
+  id: string;
+  name: string;
+  url: string;
+}
+
+export interface ChartInfo {
+  name: string;
+  version: string;
+  appVersion: string;
+  description: string;
+}
+
+export interface ChartList {
+  repositoryName: string;
+  charts: ChartInfo[];
+}
+
+export interface ChartDetail {
+  repositoryName: string;
+  chartName: string;
+  version: string;
+  appVersion: string;
+  description: string;
+  home: string;
+  sources: string[];
+  maintainers: { name: string; email: string }[];
+}
+
+export interface ChartValues {
+  repositoryName: string;
+  chartName: string;
+  version: string;
+  valuesContent: string;
+}
+
+export interface ReleaseInfo {
+  name: string;
+  namespace: string;
+  chart: string;
+  chartVersion: string;
+  revision: string;
+  status: string;
+  updated: string;
 }
 
 export interface AuditEvent {
