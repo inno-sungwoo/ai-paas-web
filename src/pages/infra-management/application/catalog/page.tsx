@@ -44,8 +44,8 @@ const makeChartColumns = (onSelect: (chart: ChartInfo) => void) => [
   },
   {
     id: 'deploy',
-    header: '',
-    size: 80,
+    header: '배포',
+    size: 100,
     enableSorting: false,
     cell: ({ row }: { row: { original: ChartInfo } }) => (
       <button
