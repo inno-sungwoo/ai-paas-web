@@ -29,12 +29,11 @@ export default function CostOptimizationPage() {
     if (option) setSelectedValue(option);
   };
 
-  // 요약 데이터 계산
+  // 요약 데이터 계산 — 클러스터 전체 실제 데이터 기준
   const dailyCost = costSummary?.totalGpuCostKrw ?? 0;
   const monthlyCost = dailyCost * 30;
-  // ai-pass3 네임스페이스의 GPU 사용만 표시 (우리 과제 범위)
-  const aiPass3Gpu = costSummary?.teams.find((t) => t.namespace === 'ai-pass3')?.gpuCount ?? 0;
-  const gpuQuotaLimit = 4; // ResourceQuota 제한
+  const totalGpuRequested = costSummary?.teams.reduce((sum, t) => sum + t.gpuCount, 0) ?? 0;
+  const gpuCapacity = 4; // K8s capacity (time-slicing)
   const gpuUtil = monitoringSummary?.avgGpuUtil ?? 0;
 
   return (
@@ -86,11 +85,15 @@ export default function CostOptimizationPage() {
             <div className="mt-0.5 text-xs text-[#999]">/월</div>
           </div>
           <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
-            <div className="text-xs text-[#999]">GPU 사용 (ai-pass3)</div>
-            <div className="mt-1 text-2xl font-bold text-[#1a1a1a]">
-              {summaryLoading ? '-' : `${aiPass3Gpu}/${gpuQuotaLimit}개`}
+            <div className="text-xs text-[#999]">GPU 할당</div>
+            <div
+              className={`mt-1 text-2xl font-bold ${totalGpuRequested > gpuCapacity ? 'text-red-500' : 'text-[#1a1a1a]'}`}
+            >
+              {summaryLoading ? '-' : `${totalGpuRequested}/${gpuCapacity}개`}
             </div>
-            <div className="mt-0.5 text-xs text-[#999]">할당 / Quota 제한</div>
+            <div className="mt-0.5 text-xs text-[#999]">
+              {totalGpuRequested > gpuCapacity ? '초과 할당' : '요청 / 전체'}
+            </div>
           </div>
           <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
             <div className="text-xs text-[#999]">현재 활용률</div>
