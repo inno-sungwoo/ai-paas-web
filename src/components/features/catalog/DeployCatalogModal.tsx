@@ -76,6 +76,12 @@ export const DeployCatalogModal = ({
               );
             } else if (msg.includes('Quota') || msg.includes('exceeded')) {
               setDeployError('GPU Quota를 초과했습니다. GPU가 반납되면 다시 시도하세요.');
+            } else if (msg.includes('no chart version found') || msg.includes('not found in')) {
+              setDeployError('차트 버전을 찾을 수 없습니다. 버전을 확인해주세요.');
+            } else if (msg.includes('YAML') || msg.includes('parse')) {
+              setDeployError('values.yaml 형식이 올바르지 않습니다. YAML 문법을 확인해주세요.');
+            } else if (msg.includes('connect') || msg.includes('timeout')) {
+              setDeployError('클러스터에 연결할 수 없습니다. 네트워크를 확인해주세요.');
             } else {
               setDeployError(msg || '배포에 실패했습니다. 다시 시도해주세요.');
             }
@@ -151,8 +157,8 @@ export const DeployCatalogModal = ({
               <input
                 type="text"
                 value={version}
-                onChange={(e) => setVersion(e.target.value)}
-                className="w-full rounded border border-[#e8e8e8] px-3 py-2 text-sm"
+                readOnly
+                className="w-full rounded border border-[#e8e8e8] bg-[#f5f5f5] px-3 py-2 text-sm text-[#999]"
               />
             </div>
           </div>
