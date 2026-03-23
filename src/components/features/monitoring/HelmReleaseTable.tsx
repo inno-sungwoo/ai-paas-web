@@ -62,13 +62,13 @@ export const HelmReleaseTable = ({ releases, isPending, onDelete }: HelmReleaseT
         {
           id: 'actions',
           header: '',
-          size: 50,
+          size: 70,
           enableSorting: false,
           cell: ({ row }: { row: { original: ReleaseStatus } }) => (
             <button
               type="button"
               onClick={() => onDelete(row.original)}
-              className="rounded border border-red-200 px-2 py-1 text-xs text-red-500 hover:bg-red-50"
+              className="rounded border border-red-200 px-3 py-1 text-sm whitespace-nowrap text-red-500 hover:bg-red-50"
             >
               삭제
             </button>
