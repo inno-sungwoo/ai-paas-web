@@ -68,6 +68,7 @@ const columns = [
 export default function AuditLogPage() {
   const { pagination, setPagination } = useTablePagination();
   const [selectedValue, setSelectedValue] = useState<OptionType>(namespaceOptions[0]);
+  const [sortNewest, setSortNewest] = useState(true);
 
   const namespace = selectedValue?.value ?? 'ai-pass3';
   const { events, isPending } = useGetAuditEvents('innogrid-aikube', namespace);
@@ -75,6 +76,13 @@ export default function AuditLogPage() {
   const onChangeSelect = (option: SelectSingleValue<OptionType>) => {
     if (option) setSelectedValue(option);
   };
+
+  // 정렬 적용
+  const sorted = [...events].sort((a, b) => {
+    const timeA = a.lastTimestamp ?? a.firstTimestamp ?? '';
+    const timeB = b.lastTimestamp ?? b.firstTimestamp ?? '';
+    return sortNewest ? timeB.localeCompare(timeA) : timeA.localeCompare(timeB);
+  });
 
   return (
     <main>
@@ -86,14 +94,26 @@ export default function AuditLogPage() {
         <h2 className="page-title">감사 로그</h2>
       </div>
       <div className="page-content">
-        <Select
-          className="page-input_item-data_select"
-          options={namespaceOptions}
-          getOptionLabel={(option) => option.text}
-          getOptionValue={(option) => option.value}
-          value={selectedValue}
-          onChange={onChangeSelect}
-        />
+        <div className="flex items-center gap-4">
+          <Select
+            className="page-input_item-data_select"
+            options={namespaceOptions}
+            getOptionLabel={(option) => option.text}
+            getOptionValue={(option) => option.value}
+            value={selectedValue}
+            onChange={onChangeSelect}
+          />
+          <button
+            type="button"
+            onClick={() => setSortNewest(!sortNewest)}
+            className="rounded border border-[#e8e8e8] px-3 py-2 text-sm text-[#525252] hover:bg-[#f5f5f5]"
+          >
+            {sortNewest ? '최신순' : '오래된순'}
+          </button>
+          <span className="text-xs text-[#999]">
+            {sorted.length}개 이벤트
+          </span>
+        </div>
         <div className="page-mt-16">
           {isPending ? (
             <div className="flex items-center justify-center py-8 text-sm text-[#999]">
@@ -102,8 +122,8 @@ export default function AuditLogPage() {
           ) : (
             <Table
               columns={columns}
-              data={events}
-              totalCount={events.length}
+              data={sorted}
+              totalCount={sorted.length}
               pagination={pagination}
               setPagination={setPagination}
             />
