@@ -12,25 +12,41 @@ export const SecurityCheckPopup = ({ warnings, onEdit, onProceed }: SecurityChec
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-[520px] rounded-lg bg-white p-6 shadow-xl">
+      <div className="w-[600px] rounded-lg bg-white p-6 shadow-xl">
         <h3 className="mb-4 text-lg font-semibold text-[#1a1a1a]">보안 검사 결과</h3>
-        <div className="mb-4 max-h-[300px] space-y-2 overflow-y-auto">
+        <div className="mb-4 max-h-[400px] space-y-3 overflow-y-auto">
           {errors.map((w, i) => (
             <div
               key={`err-${i}`}
-              className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3"
+              className="rounded-md border border-red-200 bg-red-50 p-3"
             >
-              <span className="mt-0.5 inline-block h-2 w-2 shrink-0 rounded-full bg-red-500" />
-              <span className="text-sm text-red-700">{w.message}</span>
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 inline-block h-2 w-2 shrink-0 rounded-full bg-red-500" />
+                <span className="text-sm font-medium text-red-700">{w.message}</span>
+              </div>
+              {w.fix && (
+                <div className="mt-2 ml-4">
+                  <span className="text-xs text-red-500">수정 방법:</span>
+                  <pre className="mt-1 rounded bg-red-100 p-2 text-xs text-red-800">{w.fix}</pre>
+                </div>
+              )}
             </div>
           ))}
           {warnItems.map((w, i) => (
             <div
               key={`warn-${i}`}
-              className="flex items-start gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-3"
+              className="rounded-md border border-yellow-200 bg-yellow-50 p-3"
             >
-              <span className="mt-0.5 inline-block h-2 w-2 shrink-0 rounded-full bg-yellow-500" />
-              <span className="text-sm text-yellow-700">{w.message}</span>
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 inline-block h-2 w-2 shrink-0 rounded-full bg-yellow-500" />
+                <span className="text-sm font-medium text-yellow-700">{w.message}</span>
+              </div>
+              {w.fix && (
+                <div className="mt-2 ml-4">
+                  <span className="text-xs text-yellow-600">values.yaml에 추가:</span>
+                  <pre className="mt-1 rounded bg-yellow-100 p-2 text-xs text-yellow-800">{w.fix}</pre>
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -54,7 +54,7 @@ const makeChartColumns = (onSelect: (chart: ChartInfo) => void) => [
           e.stopPropagation();
           onSelect(row.original);
         }}
-        className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
+        className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
       >
         배포
       </button>
