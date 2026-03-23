@@ -61,7 +61,7 @@ export const HelmReleaseTable = ({ releases, isPending, onDelete }: HelmReleaseT
         ...baseColumns,
         {
           id: 'actions',
-          header: '',
+          header: '삭제',
           size: 70,
           enableSorting: false,
           cell: ({ row }: { row: { original: ReleaseStatus } }) => (
