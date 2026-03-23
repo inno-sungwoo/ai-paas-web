@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BreadCrumb, Select, type SelectSingleValue } from '@innogrid/ui';
 import { useGetCostSummary, useGetIdleWarnings, useGetCostReport } from '@/hooks/service/cost';
+import { useGetMonitoringSummary } from '@/hooks/service/monitoring';
 import { IdleWarningBanner } from '@/components/features/cost/IdleWarningBanner';
 import { CostSummaryChart } from '@/components/features/cost/CostSummaryChart';
 import { UsageReportTable } from '@/components/features/cost/UsageReportTable';
@@ -22,10 +23,18 @@ export default function CostOptimizationPage() {
   const { costSummary, isPending: summaryLoading } = useGetCostSummary(cluster);
   const { idleWarnings } = useGetIdleWarnings(cluster);
   const { costReport, isPending: reportLoading } = useGetCostReport(cluster);
+  const { summary: monitoringSummary } = useGetMonitoringSummary(cluster);
 
   const onChangeSelect = (option: SelectSingleValue<OptionType>) => {
     if (option) setSelectedValue(option);
   };
+
+  // 요약 데이터 계산
+  const dailyCost = costSummary?.totalGpuCostKrw ?? 0;
+  const monthlyCost = dailyCost * 30;
+  const totalGpuUsed = costSummary?.teams.reduce((sum, t) => sum + t.gpuCount, 0) ?? 0;
+  const totalGpuCapacity = monitoringSummary?.gpuCount ?? 4;
+  const gpuUtil = monitoringSummary?.avgGpuUtil ?? 0;
 
   return (
     <main>
@@ -55,25 +64,63 @@ export default function CostOptimizationPage() {
           </button>
         </div>
 
+        {/* 요약 카드 4개 */}
+        <div className="page-mt-16 flex gap-4">
+          <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
+            <div className="text-xs text-[#999]">일 비용</div>
+            <div className="mt-1 text-2xl font-bold text-[#1a1a1a]">
+              {summaryLoading ? '-' : `${dailyCost.toLocaleString()}원`}
+            </div>
+            <div className="mt-0.5 text-xs text-[#999]">/일</div>
+          </div>
+          <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
+            <div className="text-xs text-[#999]">월 예상 비용</div>
+            <div className="mt-1 text-2xl font-bold text-[#1a1a1a]">
+              {summaryLoading
+                ? '-'
+                : monthlyCost >= 10000
+                  ? `${(monthlyCost / 10000).toFixed(0)}만원`
+                  : `${monthlyCost.toLocaleString()}원`}
+            </div>
+            <div className="mt-0.5 text-xs text-[#999]">/월</div>
+          </div>
+          <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
+            <div className="text-xs text-[#999]">GPU 사용</div>
+            <div className="mt-1 text-2xl font-bold text-[#1a1a1a]">
+              {summaryLoading ? '-' : `${totalGpuUsed}/${totalGpuCapacity}개`}
+            </div>
+            <div className="mt-0.5 text-xs text-[#999]">할당 / 전체</div>
+          </div>
+          <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
+            <div className="text-xs text-[#999]">현재 활용률</div>
+            <div
+              className={`mt-1 text-2xl font-bold ${gpuUtil >= 50 ? 'text-[#1a1a1a]' : gpuUtil > 0 ? 'text-yellow-500' : 'text-[#999]'}`}
+            >
+              {monitoringSummary ? `${gpuUtil.toFixed(1)}%` : '-'}
+            </div>
+            <div className="mt-0.5 text-xs text-[#999]">실시간</div>
+          </div>
+        </div>
+
         <div className="page-mt-16">
           <IdleWarningBanner warnings={idleWarnings} />
         </div>
 
-        <div className="page-content-detail-col2 page-mt-16">
-          <div className="page-detail-round-box page-flex-1 page-mt-0">
-            <div className="page-detail-round-name">비용 요약</div>
-            <div className="page-detail-round-data page-p-24">
-              {summaryLoading ? (
-                <div className="flex items-center justify-center py-8 text-sm text-[#999]">
-                  로딩 중...
-                </div>
-              ) : (
-                <CostSummaryChart costSummary={costSummary} />
-              )}
-            </div>
+        {/* 네임스페이스별 비용 차트 */}
+        <div className="page-detail-round-box page-mt-16">
+          <div className="page-detail-round-name">네임스페이스별 GPU 비용 (일 기준)</div>
+          <div className="page-detail-round-data page-p-24">
+            {summaryLoading ? (
+              <div className="flex items-center justify-center py-8 text-sm text-[#999]">
+                로딩 중...
+              </div>
+            ) : (
+              <CostSummaryChart costSummary={costSummary} />
+            )}
           </div>
         </div>
 
+        {/* 7일 사용 보고서 */}
         <div className="page-detail-round-box page-mt-16">
           <div className="page-detail-round-name">
             7일 사용 보고서{' '}

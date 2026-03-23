@@ -7,24 +7,30 @@ interface UsageReportTableProps {
 }
 
 const columns = [
-  { id: 'date', header: '날짜', accessorFn: (row: DailyEntry) => row.date, size: 150 },
+  { id: 'date', header: '날짜', accessorFn: (row: DailyEntry) => row.date, size: 120 },
   {
     id: 'namespace',
     header: '네임스페이스',
     accessorFn: (row: DailyEntry) => row.namespace,
-    size: 200,
+    size: 160,
   },
   {
     id: 'avgGpuUtil',
-    header: '평균 GPU 활용률(%)',
+    header: 'GPU 활용률',
     accessorFn: (row: DailyEntry) => `${row.avgGpuUtil.toFixed(1)}%`,
-    size: 180,
+    size: 120,
   },
   {
     id: 'costKrw',
-    header: '비용(원)',
+    header: '일 비용(원)',
     accessorFn: (row: DailyEntry) => row.costKrw.toLocaleString(),
-    size: 150,
+    size: 130,
+  },
+  {
+    id: 'monthlyCost',
+    header: '월 환산(원)',
+    accessorFn: (row: DailyEntry) => (row.costKrw * 30).toLocaleString(),
+    size: 140,
   },
   {
     id: 'verdict',
@@ -54,7 +60,7 @@ const columns = [
       } else {
         return (
           <Badge color="stopped" variant="soft" size="small">
-            사용하지 않음
+            미사용
           </Badge>
         );
       }
