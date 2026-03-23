@@ -1,4 +1,4 @@
-import { Table, useTablePagination } from '@innogrid/ui';
+import { Table, Badge, useTablePagination } from '@innogrid/ui';
 import type { DailyEntry } from '@/types/monitoring';
 
 interface UsageReportTableProps {
@@ -34,13 +34,29 @@ const columns = [
     cell: ({ row }: { row: { original: DailyEntry } }) => {
       const util = row.original.avgGpuUtil;
       if (util >= 50) {
-        return <span className="table-td-state table-td-state-run">정상 사용</span>;
+        return (
+          <Badge color="success" variant="soft" size="small">
+            정상 사용
+          </Badge>
+        );
       } else if (util >= 20) {
-        return <span className="table-td-state table-td-state-pending">활용률 낮음</span>;
+        return (
+          <Badge color="warning" variant="soft" size="small">
+            활용률 낮음
+          </Badge>
+        );
       } else if (util > 0) {
-        return <span className="table-td-state table-td-state-negative">종료 권고</span>;
+        return (
+          <Badge color="error" variant="soft" size="small">
+            종료 권고
+          </Badge>
+        );
       } else {
-        return <span className="table-td-state table-td-state-negative">사용하지 않음</span>;
+        return (
+          <Badge color="stopped" variant="soft" size="small">
+            사용하지 않음
+          </Badge>
+        );
       }
     },
   },
