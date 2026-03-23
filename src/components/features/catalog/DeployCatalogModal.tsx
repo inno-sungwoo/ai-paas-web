@@ -27,7 +27,8 @@ export const DeployCatalogModal = ({
   const [version, setVersion] = useState(chartVersion);
   const [step, setStep] = useState<Step>('form');
 
-  const { chartValues, isPending: valuesLoading } = useGetChartValues(repoName, chartName, version);
+  // version 파라미터 없이 호출 — 최신 버전 values를 가져옴 (version 지정 시 캐시 미스 방지)
+  const { chartValues, isPending: valuesLoading } = useGetChartValues(repoName, chartName);
   const [valuesContent, setValuesContent] = useState('');
   const [valuesLoaded, setValuesLoaded] = useState(false);
 
