@@ -181,7 +181,7 @@ export default function ApplicationCatalogPage() {
                     <div className="text-sm">
                       <span className="text-[#999]">관리자:</span>{' '}
                       <span className="text-[#525252]">
-                        {chartDetail.maintainers.map((m) => m.name).join(', ')}
+                        {chartDetail.maintainers?.map((m) => m.name).join(', ')}
                       </span>
                     </div>
                   )}
