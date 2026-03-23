@@ -28,8 +28,10 @@ export default function ApplicationHelmReleasePage() {
           searchParams: { clusterId: cluster, namespace: release.namespace },
         })
         .json(),
-    onSuccess: () => {
+    onSettled: () => {
+      // 성공/실패 모두 목록 즉시 갱신
       queryClient.invalidateQueries({ queryKey: ['monitoring'] });
+      queryClient.invalidateQueries({ queryKey: ['charts'] });
     },
   });
 
@@ -38,7 +40,11 @@ export default function ApplicationHelmReleasePage() {
   };
 
   const handleDelete = (release: ReleaseStatus) => {
-    if (confirm(`"${release.name}" 릴리즈를 삭제하시겠습니까?\n네임스페이스: ${release.namespace}\n이 작업은 되돌릴 수 없습니다.`)) {
+    if (
+      confirm(
+        `"${release.name}" 릴리즈를 삭제하시겠습니까?\n네임스페이스: ${release.namespace}\n이 작업은 되돌릴 수 없습니다.`
+      )
+    ) {
       deleteMutation.mutate(release);
     }
   };
