@@ -32,12 +32,16 @@ const columns = [
     accessorFn: (row: DailyEntry) => (row.avgGpuUtil >= 30 ? 'normal' : 'warning'),
     size: 120,
     cell: ({ row }: { row: { original: DailyEntry } }) => {
-      const isNormal = row.original.avgGpuUtil >= 30;
-      return isNormal ? (
-        <span className="text-green-600">정상</span>
-      ) : (
-        <span className="font-semibold text-yellow-600">종료 권고</span>
-      );
+      const util = row.original.avgGpuUtil;
+      if (util >= 50) {
+        return <span className="text-green-600">✅ 정상 사용</span>;
+      } else if (util >= 20) {
+        return <span className="text-blue-600">📉 활용률 낮음</span>;
+      } else if (util > 0) {
+        return <span className="font-semibold text-yellow-600">⚠ 종료 권고</span>;
+      } else {
+        return <span className="font-semibold text-red-500">🔴 사용하지 않음</span>;
+      }
     },
   },
 ];
