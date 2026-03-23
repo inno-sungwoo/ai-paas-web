@@ -55,13 +55,34 @@ export const DeployCatalogModal = ({
     }
   };
 
+  const [deployError, setDeployError] = useState('');
+
   const handleConfirmDeploy = () => {
+    setDeployError('');
     deployMutation.mutate(
       { repoName, chartName, releaseName, clusterId, namespace, version, valuesContent },
       {
         onSuccess: () => {
           onSuccess();
           onClose();
+        },
+        onError: async (error: any) => {
+          try {
+            const body = await error.response?.json?.();
+            const msg = body?.message || '';
+            if (msg.includes('already exists')) {
+              setDeployError(
+                `릴리즈 이름 "${releaseName}"이(가) 이미 존재합니다. 다른 이름을 사용하세요.`
+              );
+            } else if (msg.includes('Quota') || msg.includes('exceeded')) {
+              setDeployError('GPU Quota를 초과했습니다. GPU가 반납되면 다시 시도하세요.');
+            } else {
+              setDeployError(msg || '배포에 실패했습니다. 다시 시도해주세요.');
+            }
+          } catch {
+            setDeployError('배포에 실패했습니다. 다시 시도해주세요.');
+          }
+          setStep('form');
         },
       }
     );
@@ -153,9 +174,9 @@ export const DeployCatalogModal = ({
             />
           </div>
         </div>
-        {deployMutation.isError && (
+        {deployError && (
           <div className="mb-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            배포에 실패했습니다. 다시 시도해주세요.
+            {deployError}
           </div>
         )}
         <div className="flex justify-end gap-2">
