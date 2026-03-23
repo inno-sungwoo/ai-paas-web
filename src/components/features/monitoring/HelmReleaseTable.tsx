@@ -35,7 +35,17 @@ const baseColumns = [
     accessorFn: (row: ReleaseStatus) => (row.gpuUtil != null ? 'used' : 'none'),
     size: 80,
     cell: ({ row }: { row: { original: ReleaseStatus } }) => {
-      if (row.original.gpuUtil != null) {
+      const r = row.original;
+      // GPU를 실제로 요청한 차트만 "사용 중" 표시
+      // gpu-jupyter, ollama-server 등 GPU 차트인지 확인
+      const isGpuChart =
+        r.chart &&
+        (r.chart.includes('gpu') ||
+          r.chart.includes('ollama') ||
+          r.chart.includes('vllm') ||
+          r.chart.includes('triton') ||
+          (r.chart.includes('jupyter') && r.chart.includes('gpu')));
+      if (isGpuChart) {
         return (
           <Badge color="info" variant="soft" size="small">
             사용 중
