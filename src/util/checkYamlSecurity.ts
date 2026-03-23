@@ -9,15 +9,13 @@ export function checkYamlSecurity(yamlContent: string): SecurityWarning[] {
   const warnings: SecurityWarning[] = [];
   const lines = yamlContent.split('\n');
 
-  const hasGpuLimit = lines.some(
-    (l) => !l.trim().startsWith('#') && l.includes('nvidia.com/gpu'),
-  );
+  const hasGpuLimit = lines.some((l) => !l.trim().startsWith('#') && l.includes('nvidia.com/gpu'));
   if (!hasGpuLimit) {
     warnings.push({
       severity: 'warning',
       message:
         'GPU 리소스 제한이 설정되지 않았습니다. resources.limits에 nvidia.com/gpu를 추가하세요.',
-      fix: 'resources:\n  limits:\n    nvidia.com/gpu: "1"',
+      fix: '기존 resources: 블록을 찾아서 아래처럼 수정하세요:\n\nresources:\n  limits:\n    nvidia.com/gpu: "1"\n    cpu: 500m\n    memory: 512Mi',
     });
   }
 
@@ -43,13 +41,13 @@ export function checkYamlSecurity(yamlContent: string): SecurityWarning[] {
       !l.trim().startsWith('#') &&
       (l.includes('auth-type') ||
         l.includes('auth-url') ||
-        l.includes('nginx.ingress.kubernetes.io/auth')),
+        l.includes('nginx.ingress.kubernetes.io/auth'))
   );
   if (hasIngress && !hasAuth) {
     warnings.push({
       severity: 'warning',
       message: 'Ingress에 인증 설정이 없습니다.',
-      fix: 'ingress:\n  annotations:\n    nginx.ingress.kubernetes.io/auth-type: basic\n    nginx.ingress.kubernetes.io/auth-url: "https://auth.example.com"',
+      fix: '기존 ingress: 블록을 찾아서 annotations를 추가하세요:\n\ningress:\n  enabled: false\n  annotations:\n    nginx.ingress.kubernetes.io/auth-type: basic\n    nginx.ingress.kubernetes.io/auth-url: "https://auth.example.com"',
     });
   }
 
