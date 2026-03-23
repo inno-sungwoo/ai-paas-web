@@ -4,9 +4,10 @@ import type { ReleaseStatus } from '@/types/monitoring';
 interface HelmReleaseTableProps {
   releases: ReleaseStatus[];
   isPending: boolean;
+  onDelete?: (release: ReleaseStatus) => void;
 }
 
-const columns = [
+const baseColumns = [
   { id: 'name', header: '릴리즈', accessorFn: (row: ReleaseStatus) => row.name, size: 200 },
   {
     id: 'namespace',
@@ -46,7 +47,7 @@ const columns = [
   },
 ];
 
-export const HelmReleaseTable = ({ releases, isPending }: HelmReleaseTableProps) => {
+export const HelmReleaseTable = ({ releases, isPending, onDelete }: HelmReleaseTableProps) => {
   const { pagination, setPagination } = useTablePagination();
 
   if (isPending) {
@@ -54,6 +55,27 @@ export const HelmReleaseTable = ({ releases, isPending }: HelmReleaseTableProps)
       <div className="flex items-center justify-center py-8 text-sm text-[#999]">로딩 중...</div>
     );
   }
+
+  const columns = onDelete
+    ? [
+        ...baseColumns,
+        {
+          id: 'actions',
+          header: '관리',
+          size: 80,
+          enableSorting: false,
+          cell: ({ row }: { row: { original: ReleaseStatus } }) => (
+            <button
+              type="button"
+              onClick={() => onDelete(row.original)}
+              className="text-xs text-red-500 hover:text-red-700"
+            >
+              삭제
+            </button>
+          ),
+        },
+      ]
+    : baseColumns;
 
   return (
     <Table

@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { BreadCrumb, Select, type SelectSingleValue } from '@innogrid/ui';
 import { useGetMonitoringReleases } from '@/hooks/service/monitoring';
 import { HelmReleaseTable } from '@/components/features/monitoring/HelmReleaseTable';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import type { ReleaseStatus } from '@/types/monitoring';
 
 type OptionType = { text: string; value: string };
 
@@ -16,9 +19,28 @@ export default function ApplicationHelmReleasePage() {
   const cluster = selectedValue?.value ?? 'innogrid-aikube';
   const { releases, isPending } = useGetMonitoringReleases(cluster);
   const [nsFilter, setNsFilter] = useState<OptionType | null>(null);
+  const queryClient = useQueryClient();
+
+  const deleteMutation = useMutation({
+    mutationFn: (release: ReleaseStatus) =>
+      api
+        .delete(`charts/releases/${release.name}`, {
+          searchParams: { clusterId: cluster, namespace: release.namespace },
+        })
+        .json(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['monitoring'] });
+    },
+  });
 
   const onChangeSelect = (option: SelectSingleValue<OptionType>) => {
     if (option) setSelectedValue(option);
+  };
+
+  const handleDelete = (release: ReleaseStatus) => {
+    if (confirm(`"${release.name}" 릴리즈를 삭제하시겠습니까?\n네임스페이스: ${release.namespace}\n이 작업은 되돌릴 수 없습니다.`)) {
+      deleteMutation.mutate(release);
+    }
   };
 
   // 네임스페이스 목록 추출 (중복 제거)
@@ -69,10 +91,18 @@ export default function ApplicationHelmReleasePage() {
             }}
             placeholder="네임스페이스 필터"
           />
-          <span className="text-xs text-[#999]">{sorted.length}개 릴리즈 (최신 배포순)</span>
+          <span className="text-xs text-[#999]">
+            {sorted.length}개 릴리즈 (최신 배포순)
+            {deleteMutation.isPending && ' · 삭제 중...'}
+          </span>
         </div>
+        {deleteMutation.isError && (
+          <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            삭제에 실패했습니다. 다시 시도해주세요.
+          </div>
+        )}
         <div className="page-mt-16">
-          <HelmReleaseTable releases={sorted} isPending={isPending} />
+          <HelmReleaseTable releases={sorted} isPending={isPending} onDelete={handleDelete} />
         </div>
       </div>
     </main>
