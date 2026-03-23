@@ -177,7 +177,7 @@ export default function ApplicationCatalogPage() {
                     <span className="text-[#999]">설명:</span>{' '}
                     <span className="text-[#525252]">{chartDetail.description}</span>
                   </div>
-                  {chartDetail.maintainers?.length > 0 && (
+                  {(chartDetail.maintainers?.length ?? 0) > 0 && (
                     <div className="text-sm">
                       <span className="text-[#999]">관리자:</span>{' '}
                       <span className="text-[#525252]">
