@@ -35,19 +35,23 @@ export function checkYamlSecurity(yamlContent: string): SecurityWarning[] {
     }
   });
 
-  const hasIngress = lines.some((l) => !l.trim().startsWith('#') && l.includes('ingress:'));
+  // ingress enabled: true일 때만 인증 경고 (enabled: false면 Ingress 미사용이므로 무시)
+  const hasIngressEnabled = lines.some(
+    (l) => !l.trim().startsWith('#') && /enabled:\s*true/i.test(l.trim()),
+  );
   const hasAuth = lines.some(
     (l) =>
       !l.trim().startsWith('#') &&
       (l.includes('auth-type') ||
         l.includes('auth-url') ||
-        l.includes('nginx.ingress.kubernetes.io/auth'))
+        l.includes('auth-secret') ||
+        l.includes('nginx.ingress.kubernetes.io/auth')),
   );
-  if (hasIngress && !hasAuth) {
+  if (hasIngressEnabled && !hasAuth) {
     warnings.push({
       severity: 'warning',
-      message: 'Ingress에 인증 설정이 없습니다.',
-      fix: '기존 ingress: 블록을 찾아서 annotations를 추가하세요:\n\ningress:\n  enabled: false\n  annotations:\n    nginx.ingress.kubernetes.io/auth-type: basic\n    nginx.ingress.kubernetes.io/auth-url: "https://auth.example.com"',
+      message: 'Ingress가 활성화되어 있지만 인증 설정이 없습니다.',
+      fix: '기존 ingress: 블록에 annotations를 추가하고, K8s Secret도 생성하세요:\n\ningress:\n  enabled: true\n  annotations:\n    nginx.ingress.kubernetes.io/auth-type: basic\n    nginx.ingress.kubernetes.io/auth-secret: basic-auth\n\n# Secret 생성: kubectl create secret generic basic-auth --from-file=auth -n ai-pass3',
     });
   }
 
