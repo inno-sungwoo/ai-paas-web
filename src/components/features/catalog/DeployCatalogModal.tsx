@@ -22,17 +22,23 @@ export const DeployCatalogModal = ({
   onSuccess,
 }: DeployCatalogModalProps) => {
   const [releaseName, setReleaseName] = useState('');
-  const [namespace, setNamespace] = useState('default');
+  const [namespace, setNamespace] = useState('ai-pass3');
   const [clusterId, setClusterId] = useState('innogrid-aikube');
   const [version, setVersion] = useState(chartVersion);
   const [step, setStep] = useState<Step>('form');
 
-  const { chartValues } = useGetChartValues(repoName, chartName, version);
+  const { chartValues, isPending: valuesLoading } = useGetChartValues(repoName, chartName, version);
   const [valuesContent, setValuesContent] = useState('');
   const [valuesLoaded, setValuesLoaded] = useState(false);
 
   if (chartValues?.valuesContent && !valuesLoaded) {
-    setValuesContent(chartValues.valuesContent);
+    // helm show values 결과에 WARNING 라인이 포함될 수 있으므로 제거
+    const cleanValues = chartValues.valuesContent
+      .split('\n')
+      .filter((line) => !line.startsWith('WARNING:') && !line.startsWith('Repository '))
+      .join('\n')
+      .trimStart();
+    setValuesContent(cleanValues);
     setValuesLoaded(true);
   }
 
@@ -56,7 +62,7 @@ export const DeployCatalogModal = ({
           onSuccess();
           onClose();
         },
-      },
+      }
     );
   };
 
@@ -84,9 +90,7 @@ export const DeployCatalogModal = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="w-[640px] rounded-lg bg-white p-6 shadow-xl">
-        <h3 className="mb-4 text-lg font-semibold text-[#1a1a1a]">
-          차트 배포 - {chartName}
-        </h3>
+        <h3 className="mb-4 text-lg font-semibold text-[#1a1a1a]">차트 배포 - {chartName}</h3>
         <div className="mb-4 space-y-3">
           <div>
             <label className="mb-1 block text-xs text-[#525252]">릴리즈 이름</label>
@@ -131,13 +135,20 @@ export const DeployCatalogModal = ({
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs text-[#525252]">values.yaml</label>
+            <label className="mb-1 block text-xs text-[#525252]">
+              values.yaml
+              {valuesLoading && <span className="ml-2 text-[#999]">(로딩 중...)</span>}
+            </label>
             <textarea
               value={valuesContent}
               onChange={(e) => setValuesContent(e.target.value)}
               rows={14}
               className="w-full rounded border border-[#e8e8e8] px-3 py-2 font-mono text-xs"
-              placeholder="# values.yaml 내용을 입력하세요..."
+              placeholder={
+                valuesLoading
+                  ? 'values.yaml을 불러오는 중입니다...'
+                  : '# values.yaml 내용을 입력하세요. 비워두면 기본값으로 배포됩니다.'
+              }
             />
           </div>
         </div>

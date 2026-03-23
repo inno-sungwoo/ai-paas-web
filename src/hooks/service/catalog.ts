@@ -33,12 +33,15 @@ export const useGetCharts = (repoName: string) => {
 export const useGetChartDetail = (repoName: string, chartName: string, version?: string) => {
   const { data, isPending, isError } = useQuery({
     queryKey: ['charts', repoName, chartName, 'detail', version],
-    queryFn: () => {
+    queryFn: async () => {
       const searchParams: Record<string, string> = {};
       if (version) searchParams.version = version;
-      return api
-        .get<ChartDetail>(`charts/${repoName}/${chartName}/detail`, { searchParams })
-        .json();
+      const res = await api
+        .get(`charts/${repoName}/${chartName}/detail`, { searchParams })
+        .json<{ data: ChartDetail } | ChartDetail>();
+      return 'data' in res && 'repositoryName' in (res as { data: ChartDetail }).data
+        ? (res as { data: ChartDetail }).data
+        : (res as ChartDetail);
     },
     enabled: !!repoName && !!chartName,
   });
@@ -48,12 +51,15 @@ export const useGetChartDetail = (repoName: string, chartName: string, version?:
 export const useGetChartValues = (repoName: string, chartName: string, version?: string) => {
   const { data, isPending, isError } = useQuery({
     queryKey: ['charts', repoName, chartName, 'values', version],
-    queryFn: () => {
+    queryFn: async () => {
       const searchParams: Record<string, string> = {};
       if (version) searchParams.version = version;
-      return api
-        .get<ChartValues>(`charts/${repoName}/${chartName}/values`, { searchParams })
-        .json();
+      const res = await api
+        .get(`charts/${repoName}/${chartName}/values`, { searchParams })
+        .json<{ data: ChartValues } | ChartValues>();
+      return 'data' in res && 'valuesContent' in (res as { data: ChartValues }).data
+        ? (res as { data: ChartValues }).data
+        : (res as ChartValues);
     },
     enabled: !!repoName && !!chartName,
   });

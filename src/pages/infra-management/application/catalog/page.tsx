@@ -1,13 +1,33 @@
 import { useState } from 'react';
-import { BreadCrumb, Select, Table, useTablePagination, type SelectSingleValue } from '@innogrid/ui';
+import {
+  BreadCrumb,
+  Select,
+  Table,
+  useTablePagination,
+  type SelectSingleValue,
+} from '@innogrid/ui';
 import { useGetHelmRepos, useGetCharts, useGetChartDetail } from '@/hooks/service/catalog';
 import { DeployCatalogModal } from '@/components/features/catalog/DeployCatalogModal';
 import type { ChartInfo } from '@/types/monitoring';
 
 type RepoOption = { text: string; value: string };
 
-const chartColumns = [
-  { id: 'name', header: '차트 이름', accessorFn: (row: ChartInfo) => row.name, size: 250 },
+const makeChartColumns = (onSelect: (chart: ChartInfo) => void) => [
+  {
+    id: 'name',
+    header: '차트 이름',
+    accessorFn: (row: ChartInfo) => row.name,
+    size: 250,
+    cell: ({ row }: { row: { original: ChartInfo } }) => (
+      <button
+        type="button"
+        onClick={() => onSelect(row.original)}
+        className="text-left font-medium text-blue-600 hover:underline"
+      >
+        {row.original.name}
+      </button>
+    ),
+  },
   { id: 'version', header: '버전', accessorFn: (row: ChartInfo) => row.version, size: 120 },
   {
     id: 'appVersion',
@@ -21,6 +41,24 @@ const chartColumns = [
     accessorFn: (row: ChartInfo) => row.description,
     size: 400,
     enableSorting: false,
+  },
+  {
+    id: 'deploy',
+    header: '',
+    size: 80,
+    enableSorting: false,
+    cell: ({ row }: { row: { original: ChartInfo } }) => (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect(row.original);
+        }}
+        className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-700"
+      >
+        배포
+      </button>
+    ),
   },
 ];
 
@@ -40,7 +78,7 @@ export default function ApplicationCatalogPage() {
 
   const { chartDetail, isPending: detailLoading } = useGetChartDetail(
     activeRepo,
-    selectedChart?.name ?? '',
+    selectedChart?.name ?? ''
   );
 
   const onChangeRepo = (option: SelectSingleValue<RepoOption>) => {
@@ -53,11 +91,7 @@ export default function ApplicationCatalogPage() {
   return (
     <main>
       <BreadCrumb
-        items={[
-          { label: '인프라 관리' },
-          { label: '애플리케이션' },
-          { label: '카탈로그' },
-        ]}
+        items={[{ label: '인프라 관리' }, { label: '애플리케이션' }, { label: '카탈로그' }]}
         className="breadcrumbBox"
       />
       <div className="page-title-box">
@@ -91,14 +125,11 @@ export default function ApplicationCatalogPage() {
               </div>
             ) : (
               <Table
-                columns={chartColumns}
+                columns={makeChartColumns((chart) => setDeployChart(chart))}
                 data={charts}
                 totalCount={charts.length}
                 pagination={pagination}
                 setPagination={setPagination}
-                onRowClick={(row: ChartInfo) =>
-                  setSelectedChart(selectedChart?.name === row.name ? null : row)
-                }
               />
             )}
           </div>
@@ -108,9 +139,7 @@ export default function ApplicationCatalogPage() {
         {selectedChart && (
           <div className="page-detail-round-box page-mt-16">
             <div className="flex items-center justify-between">
-              <div className="page-detail-round-name">
-                {selectedChart.name} 상세 정보
-              </div>
+              <div className="page-detail-round-name">{selectedChart.name} 상세 정보</div>
               <button
                 type="button"
                 onClick={() => setDeployChart(selectedChart)}
@@ -129,7 +158,7 @@ export default function ApplicationCatalogPage() {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-[#999]">차트:</span>{' '}
-                      <span className="font-medium text-[#1a1a1a]">{chartDetail.chartName}</span>
+                      <span className="font-medium text-[#1a1a1a]">{chartDetail.name}</span>
                     </div>
                     <div>
                       <span className="text-[#999]">버전:</span>{' '}
@@ -141,9 +170,7 @@ export default function ApplicationCatalogPage() {
                     </div>
                     <div>
                       <span className="text-[#999]">홈:</span>{' '}
-                      <span className="font-medium text-[#1a1a1a]">
-                        {chartDetail.home || '-'}
-                      </span>
+                      <span className="font-medium text-[#1a1a1a]">{chartDetail.home || '-'}</span>
                     </div>
                   </div>
                   <div className="text-sm">

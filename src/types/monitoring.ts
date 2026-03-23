@@ -85,13 +85,18 @@ export interface ChartList {
 
 export interface ChartDetail {
   repositoryName: string;
-  chartName: string;
+  name: string;
   version: string;
   appVersion: string;
   description: string;
-  home: string;
-  sources: string[];
-  maintainers: { name: string; email: string }[];
+  created: string;
+  home: string | null;
+  source: string | null;
+  icon: string | null;
+  keywords: string[] | null;
+  maintainers: { name: string; email?: string }[] | null;
+  dependencies: { name: string; version: string; repository: string }[] | null;
+  versionHistory: { version: string; appVersion: string; created: string }[] | null;
 }
 
 export interface ChartValues {
