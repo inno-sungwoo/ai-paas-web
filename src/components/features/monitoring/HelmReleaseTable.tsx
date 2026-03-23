@@ -65,13 +65,15 @@ export const HelmReleaseTable = ({ releases, isPending, onDelete }: HelmReleaseT
           size: 70,
           enableSorting: false,
           cell: ({ row }: { row: { original: ReleaseStatus } }) => (
-            <button
-              type="button"
+            <Badge
+              color="error"
+              variant="soft"
+              size="small"
+              style={{ cursor: 'pointer' }}
               onClick={() => onDelete(row.original)}
-              className="rounded border border-red-200 px-3 py-1 text-sm whitespace-nowrap text-red-500 hover:bg-red-50"
             >
               삭제
-            </button>
+            </Badge>
           ),
         },
       ]
