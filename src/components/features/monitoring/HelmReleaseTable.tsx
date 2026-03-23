@@ -8,15 +8,15 @@ interface HelmReleaseTableProps {
 }
 
 const baseColumns = [
-  { id: 'name', header: '릴리즈', accessorFn: (row: ReleaseStatus) => row.name, size: 200 },
+  { id: 'name', header: '릴리즈', accessorFn: (row: ReleaseStatus) => row.name, size: 250 },
   {
     id: 'namespace',
     header: '네임스페이스',
     accessorFn: (row: ReleaseStatus) => row.namespace,
-    size: 150,
+    size: 160,
   },
-  { id: 'status', header: '상태', accessorFn: (row: ReleaseStatus) => row.status, size: 100 },
-  { id: 'chart', header: '차트', accessorFn: (row: ReleaseStatus) => row.chart, size: 150 },
+  { id: 'status', header: '상태', accessorFn: (row: ReleaseStatus) => row.status, size: 90 },
+  { id: 'chart', header: '차트', accessorFn: (row: ReleaseStatus) => row.chart, size: 200 },
   {
     id: 'chartVersion',
     header: '버전',
@@ -27,13 +27,13 @@ const baseColumns = [
     id: 'updated',
     header: '업데이트',
     accessorFn: (row: ReleaseStatus) => row.updated,
-    size: 180,
+    size: 170,
   },
   {
     id: 'gpu',
     header: 'GPU',
     accessorFn: (row: ReleaseStatus) => (row.gpuUtil != null ? 'used' : 'none'),
-    size: 100,
+    size: 80,
     cell: ({ row }: { row: { original: ReleaseStatus } }) => {
       if (row.original.gpuUtil != null) {
         return (
