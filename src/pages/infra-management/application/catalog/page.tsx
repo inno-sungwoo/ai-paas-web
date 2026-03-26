@@ -81,7 +81,8 @@ export default function ApplicationCatalogPage() {
     selectedChart?.name ?? ''
   );
 
-  const onChangeRepo = (option: SelectSingleValue<RepoOption>) => {
+    const onChangeRepo = (option: SelectSingleValue<RepoOption>) =>
+    {
     if (option) {
       setSelectedRepo(option);
       setSelectedChart(null);
