@@ -14,17 +14,14 @@ import {
   useGetMonitoringSummary,
   useGetMonitoringReleases,
   useGetMonitoringAlerts,
+  useGetNodeResourceUsage,
 } from '@/hooks/service/monitoring';
 import { HelmReleaseTable } from '@/components/features/monitoring/HelmReleaseTable';
 import { GpuStatusTable } from '@/components/features/monitoring/GpuStatusTable';
 
 type OptionType = { text: string; value: string };
 
-const clusterOptions = [
-  { text: 'innogrid-aikube', value: 'innogrid-aikube' },
-  { text: 'innogrid-dev', value: 'innogrid-dev' },
-  { text: 'innogrid-prod', value: 'innogrid-prod' },
-];
+const clusterOptions = [{ text: 'innogrid-aikube', value: 'innogrid-aikube' }];
 
 interface PodRow {
   name: string;
@@ -78,6 +75,16 @@ export default function MonitoringPage() {
   const { summary } = useGetMonitoringSummary(cluster);
   const { releases, isPending: releasesLoading } = useGetMonitoringReleases(cluster);
   const { alerts } = useGetMonitoringAlerts(cluster);
+  const { nodeResource } = useGetNodeResourceUsage(cluster);
+
+  const cpuUtil = nodeResource?.cpuUtil ?? 0;
+  const memUtil = nodeResource?.memoryUtil ?? 0;
+  const fsUtil = nodeResource?.filesystemUtil ?? 0;
+  const gpuUtil = summary?.avgGpuUtil ?? 0;
+  const gpuCount = summary?.gpuCount ?? 0;
+  const podUtil = nodeResource?.podCount
+    ? (nodeResource.podCount / nodeResource.podCapacity) * 100
+    : 0;
 
   const onChangeSelect = (option: SelectSingleValue<OptionType>) => {
     if (option) setSelectedValue(option);
@@ -139,36 +146,19 @@ export default function MonitoringPage() {
                   <div className="page-detail-round-data page-h-216">
                     <div className={styles.chartRow}>
                       <GaugeChart
-                        value={76.68}
+                        value={cpuUtil}
                         startAngle={240}
                         endAngle={-60}
                         className="size-[176px]"
                       >
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                           <div className="absolute top-[35%] text-2xl font-bold text-[#1a1a1a]">
-                            74.68%
+                            {cpuUtil.toFixed(1)}%
                           </div>
                           <div className="absolute top-[52%] mt-2 font-[13px] text-[#1a1a1a]">
-                            2 / 16 Core
+                            사용률
                           </div>
-                          <div className="absolute top-[72%] mt-6 text-xs text-[#999]">Request</div>
-                        </div>
-                      </GaugeChart>
-                      <GaugeChart
-                        value={12.45}
-                        startAngle={240}
-                        endAngle={-60}
-                        color="green"
-                        className="size-[176px]"
-                      >
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <div className="absolute top-[35%] text-2xl font-bold text-[#1a1a1a]">
-                            12.45%
-                          </div>
-                          <div className="absolute top-[52%] mt-2 font-[13px] text-[#1a1a1a]">
-                            2 / 16 Core
-                          </div>
-                          <div className="absolute top-[72%] mt-6 text-xs text-[#999]">Limit</div>
+                          <div className="absolute top-[72%] mt-6 text-xs text-[#999]">실시간</div>
                         </div>
                       </GaugeChart>
                     </div>
@@ -179,7 +169,7 @@ export default function MonitoringPage() {
                   <div className="page-detail-round-data page-h-216">
                     <div className={styles.chartRow}>
                       <GaugeChart
-                        value={32.78}
+                        value={memUtil}
                         startAngle={240}
                         endAngle={-60}
                         color="yellow"
@@ -187,29 +177,12 @@ export default function MonitoringPage() {
                       >
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                           <div className="absolute top-[35%] text-2xl font-bold text-[#1a1a1a]">
-                            32.78%
+                            {memUtil.toFixed(1)}%
                           </div>
                           <div className="absolute top-[52%] mt-2 font-[13px] text-[#1a1a1a]">
-                            2 / 16 Core
+                            사용률
                           </div>
-                          <div className="absolute top-[72%] mt-6 text-xs text-[#999]">Request</div>
-                        </div>
-                      </GaugeChart>
-                      <GaugeChart
-                        value={32.78}
-                        startAngle={240}
-                        endAngle={-60}
-                        color="yellow"
-                        className="size-[176px]"
-                      >
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <div className="absolute top-[35%] text-2xl font-bold text-[#1a1a1a]">
-                            32.78%
-                          </div>
-                          <div className="absolute top-[52%] mt-2 font-[13px] text-[#1a1a1a]">
-                            2 / 16 Core
-                          </div>
-                          <div className="absolute top-[72%] mt-6 text-xs text-[#999]">Limit</div>
+                          <div className="absolute top-[72%] mt-6 text-xs text-[#999]">실시간</div>
                         </div>
                       </GaugeChart>
                     </div>
@@ -220,7 +193,7 @@ export default function MonitoringPage() {
                   <div className="page-detail-round-data page-h-216">
                     <div className={styles.chartRow}>
                       <GaugeChart
-                        value={12.45}
+                        value={gpuUtil}
                         startAngle={240}
                         endAngle={-60}
                         color="green"
@@ -228,29 +201,14 @@ export default function MonitoringPage() {
                       >
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                           <div className="absolute top-[35%] text-2xl font-bold text-[#1a1a1a]">
-                            12.45%
+                            {gpuUtil.toFixed(1)}%
                           </div>
                           <div className="absolute top-[52%] mt-2 font-[13px] text-[#1a1a1a]">
-                            2 / 16 Core
+                            {gpuCount}개 GPU
                           </div>
-                          <div className="absolute top-[72%] mt-6 text-xs text-[#999]">Request</div>
-                        </div>
-                      </GaugeChart>
-                      <GaugeChart
-                        value={32.78}
-                        startAngle={240}
-                        endAngle={-60}
-                        color="yellow"
-                        className="size-[176px]"
-                      >
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <div className="absolute top-[35%] text-2xl font-bold text-[#1a1a1a]">
-                            32.78%
+                          <div className="absolute top-[72%] mt-6 text-xs text-[#999]">
+                            평균 활용률
                           </div>
-                          <div className="absolute top-[52%] mt-2 font-[13px] text-[#1a1a1a]">
-                            2 / 16 Core
-                          </div>
-                          <div className="absolute top-[72%] mt-6 text-xs text-[#999]">Limit</div>
                         </div>
                       </GaugeChart>
                     </div>
@@ -264,114 +222,31 @@ export default function MonitoringPage() {
             <div className="page-detail-round-data">
               <div className="page-content-detail-row2">
                 <div className={styles.chartRow}>
-                  <GaugeChart
-                    value={100.0}
-                    startAngle={90}
-                    endAngle={-270}
-                    color="blue"
-                    className="size-[176px]"
-                  >
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <div className="absolute top-[18%] mt-2 font-[13px] text-[#1a1a1a]">CPU</div>
-                      <div className="absolute top-[38%] text-2xl font-bold text-[#1a1a1a]">
-                        100.00%
+                  {[
+                    { label: 'CPU', value: cpuUtil, color: 'blue' as const },
+                    { label: '메모리', value: memUtil, color: 'blue' as const },
+                    { label: '파일 시스템', value: fsUtil, color: 'blue' as const },
+                    { label: '파드', value: podUtil, color: 'blue' as const },
+                    { label: 'GPU', value: gpuUtil, color: 'green' as const },
+                  ].map((item) => (
+                    <GaugeChart
+                      key={item.label}
+                      value={item.value}
+                      startAngle={90}
+                      endAngle={-270}
+                      color={item.color}
+                      className="size-[176px]"
+                    >
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <div className="absolute top-[18%] mt-2 font-[13px] text-[#1a1a1a]">
+                          {item.label}
+                        </div>
+                        <div className="absolute top-[38%] text-2xl font-bold text-[#1a1a1a]">
+                          {item.value.toFixed(1)}%
+                        </div>
                       </div>
-                      <div className="absolute top-[50%] mt-6 text-xs text-[#999]">
-                        34.8 of 104.94 GiB
-                      </div>
-                    </div>
-                  </GaugeChart>
-                  <GaugeChart
-                    value={64.92}
-                    startAngle={90}
-                    endAngle={-270}
-                    color="blue"
-                    className="size-[176px]"
-                  >
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <div className="absolute top-[18%] mt-2 font-[13px] text-[#1a1a1a]">
-                        메모리
-                      </div>
-                      <div className="absolute top-[38%] text-2xl font-bold text-[#1a1a1a]">
-                        64.92%
-                      </div>
-                      <div className="absolute top-[50%] mt-6 text-xs text-[#999]">
-                        34.8 of 104.94 GiB
-                      </div>
-                    </div>
-                  </GaugeChart>
-                  <GaugeChart
-                    value={12.82}
-                    startAngle={90}
-                    endAngle={-270}
-                    color="blue"
-                    className="size-[176px]"
-                  >
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <div className="absolute top-[18%] mt-2 font-[13px] text-[#1a1a1a]">
-                        파일 시스템
-                      </div>
-                      <div className="absolute top-[38%] text-2xl font-bold text-[#1a1a1a]">
-                        12.82%
-                      </div>
-                      <div className="absolute top-[50%] mt-6 text-xs text-[#999]">
-                        34.8 of 104.94 GiB
-                      </div>
-                    </div>
-                  </GaugeChart>
-                  <GaugeChart
-                    value={39.25}
-                    startAngle={90}
-                    endAngle={-270}
-                    color="blue"
-                    className="size-[176px]"
-                  >
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <div className="absolute top-[18%] mt-2 font-[13px] text-[#1a1a1a]">
-                        영구 볼륨
-                      </div>
-                      <div className="absolute top-[38%] text-2xl font-bold text-[#1a1a1a]">
-                        39.25%
-                      </div>
-                      <div className="absolute top-[50%] mt-6 text-xs text-[#999]">
-                        34.8 of 104.94 GiB
-                      </div>
-                    </div>
-                  </GaugeChart>
-                  <GaugeChart
-                    value={64.92}
-                    startAngle={90}
-                    endAngle={-270}
-                    color="blue"
-                    className="size-[176px]"
-                  >
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <div className="absolute top-[18%] mt-2 font-[13px] text-[#1a1a1a]">파드</div>
-                      <div className="absolute top-[38%] text-2xl font-bold text-[#1a1a1a]">
-                        64.92%
-                      </div>
-                      <div className="absolute top-[50%] mt-6 text-xs text-[#999]">
-                        34.8 of 104.94
-                      </div>
-                    </div>
-                  </GaugeChart>
-                  <GaugeChart
-                    value={39.25}
-                    startAngle={90}
-                    endAngle={-270}
-                    color="blue"
-                    className="size-[176px]"
-                  >
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <div className="absolute top-[18%] mt-2 font-[13px] text-[#1a1a1a]">GPU</div>
-                      <div className="absolute top-[38%] text-2xl font-bold text-[#1a1a1a]">
-                        39.25%
-                      </div>
-                      <div className="absolute top-[50%] mt-6 text-xs text-[#999]">
-                        34.8 of 104.94
-                      </div>
-                    </div>
-                  </GaugeChart>
+                    </GaugeChart>
+                  ))}
                 </div>
               </div>
             </div>

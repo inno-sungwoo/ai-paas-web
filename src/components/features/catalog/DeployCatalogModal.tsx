@@ -139,8 +139,6 @@ export const DeployCatalogModal = ({
                 className="w-full rounded border border-[#e8e8e8] px-3 py-2 text-sm"
               >
                 <option value="innogrid-aikube">innogrid-aikube</option>
-                <option value="innogrid-dev">innogrid-dev</option>
-                <option value="innogrid-prod">innogrid-prod</option>
               </select>
             </div>
             <div>

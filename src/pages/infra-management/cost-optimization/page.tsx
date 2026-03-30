@@ -9,11 +9,7 @@ import { DeploymentEstimateModal } from '@/components/features/cost/DeploymentEs
 
 type OptionType = { text: string; value: string };
 
-const clusterOptions = [
-  { text: 'innogrid-aikube', value: 'innogrid-aikube' },
-  { text: 'innogrid-dev', value: 'innogrid-dev' },
-  { text: 'innogrid-prod', value: 'innogrid-prod' },
-];
+const clusterOptions = [{ text: 'innogrid-aikube', value: 'innogrid-aikube' }];
 
 export default function CostOptimizationPage() {
   const [selectedValue, setSelectedValue] = useState<OptionType>(clusterOptions[0]);

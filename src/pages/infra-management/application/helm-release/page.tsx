@@ -8,11 +8,7 @@ import type { ReleaseStatus } from '@/types/monitoring';
 
 type OptionType = { text: string; value: string };
 
-const clusterOptions = [
-  { text: 'innogrid-aikube', value: 'innogrid-aikube' },
-  { text: 'innogrid-dev', value: 'innogrid-dev' },
-  { text: 'innogrid-prod', value: 'innogrid-prod' },
-];
+const clusterOptions = [{ text: 'innogrid-aikube', value: 'innogrid-aikube' }];
 
 export default function ApplicationHelmReleasePage() {
   const [selectedValue, setSelectedValue] = useState<OptionType>(clusterOptions[0]);
