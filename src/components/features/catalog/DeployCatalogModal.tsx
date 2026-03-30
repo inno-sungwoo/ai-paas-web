@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import Editor from 'react-simple-code-editor';
+import { highlight, languages } from 'prismjs';
+import 'prismjs/components/prism-yaml';
+import 'prismjs/themes/prism.css';
 import { useGetChartValues, useDeployChart } from '@/hooks/service/catalog';
 import { checkYamlSecurity, autoFixYaml } from '@/util/checkYamlSecurity';
 import { SecurityCheckPopup } from './SecurityCheckPopup';
@@ -169,17 +173,25 @@ export const DeployCatalogModal = ({
               values.yaml
               {valuesLoading && <span className="ml-2 text-[#999]">(로딩 중...)</span>}
             </label>
-            <textarea
-              value={valuesContent}
-              onChange={(e) => setValuesContent(e.target.value)}
-              rows={14}
-              className="w-full rounded border border-[#e8e8e8] px-3 py-2 font-mono text-xs"
-              placeholder={
-                valuesLoading
-                  ? 'values.yaml을 불러오는 중입니다...'
-                  : '# values.yaml 내용을 입력하세요. 비워두면 기본값으로 배포됩니다.'
-              }
-            />
+            <div className="max-h-[320px] overflow-auto rounded border border-[#e8e8e8]">
+              <Editor
+                value={valuesContent}
+                onValueChange={setValuesContent}
+                highlight={(code) => highlight(code, languages.yaml, 'yaml')}
+                padding={12}
+                style={{
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  minHeight: 280,
+                }}
+                placeholder={
+                  valuesLoading
+                    ? 'values.yaml을 불러오는 중입니다...'
+                    : '# values.yaml 내용을 입력하세요. 비워두면 기본값으로 배포됩니다.'
+                }
+              />
+            </div>
           </div>
         </div>
         {deployError && (
