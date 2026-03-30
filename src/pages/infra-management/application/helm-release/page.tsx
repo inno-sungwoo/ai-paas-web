@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router';
 import { BreadCrumb, Select, type SelectSingleValue } from '@innogrid/ui';
 import { useGetMonitoringReleases } from '@/hooks/service/monitoring';
 import { HelmReleaseTable } from '@/components/features/monitoring/HelmReleaseTable';

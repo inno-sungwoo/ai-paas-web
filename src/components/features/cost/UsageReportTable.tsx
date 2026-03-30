@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Table, Badge, useTablePagination } from '@innogrid/ui';
 import type { DailyEntry } from '@/types/monitoring';
 
