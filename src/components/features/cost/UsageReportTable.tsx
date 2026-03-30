@@ -48,7 +48,7 @@ export const UsageReportTable = ({ entries, isPending }: UsageReportTableProps) 
       size: 110,
       cell: ({ row }: { row: { original: DailyEntry } }) => {
         const util = row.original.avgGpuUtil;
-        if (util >= 50) {
+        if (util >= 70) {
           return (
             <Badge color="success" variant="soft" size="small">
               정상 사용
@@ -82,7 +82,7 @@ export const UsageReportTable = ({ entries, isPending }: UsageReportTableProps) 
       enableSorting: false,
       cell: ({ row }: { row: { original: DailyEntry } }) => {
         const util = row.original.avgGpuUtil;
-        if (util > 0 && util < 50) {
+        if (util > 0 && util < 70) {
           return (
             <Badge
               color={util < 20 ? 'error' : 'warning'}
