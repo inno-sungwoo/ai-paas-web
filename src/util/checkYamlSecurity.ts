@@ -35,22 +35,16 @@ export function checkYamlSecurity(yamlContent: string): SecurityWarning[] {
     }
   });
 
-  // ingress enabled: true일 때만 인증 경고 (enabled: false면 Ingress 미사용이므로 무시)
-  const hasIngressEnabled = lines.some(
-    (l) => !l.trim().startsWith('#') && /enabled:\s*true/i.test(l.trim())
+  // image.tag: latest 사용 시 경고 (버전 고정 안 됨 → 재현성 없음)
+  const hasLatestTag = lines.some(
+    (l) => !l.trim().startsWith('#') && /tag:\s*["']?latest["']?\s*$/.test(l.trim())
   );
-  const hasAuth = lines.some(
-    (l) =>
-      !l.trim().startsWith('#') &&
-      (l.includes('auth-type') ||
-        l.includes('auth-url') ||
-        l.includes('auth-secret') ||
-        l.includes('nginx.ingress.kubernetes.io/auth'))
-  );
-  if (hasIngressEnabled && !hasAuth) {
+  if (hasLatestTag) {
     warnings.push({
       severity: 'warning',
-      message: 'Ingress가 활성화되어 있지만 인증 설정이 없습니다. 외부에서 무단 접근이 가능합니다.',
+      message:
+        '이미지 태그가 latest입니다. 버전을 고정하지 않으면 배포 재현성이 보장되지 않습니다.',
+      fix: 'tag: latest → 특정 버전으로 변경',
     });
   }
 
@@ -69,7 +63,15 @@ export function autoFixYaml(yamlContent: string): string {
     return line;
   });
 
-  // 2. GPU limits 없으면 resources 블록에 추가
+  // 2. tag: latest → tag: stable
+  lines = lines.map((line) => {
+    if (!line.trim().startsWith('#') && /tag:\s*["']?latest["']?\s*$/.test(line.trim())) {
+      return line.replace(/tag:\s*["']?latest["']?/, 'tag: stable');
+    }
+    return line;
+  });
+
+  // 3. GPU limits 없으면 resources 블록에 추가
   const hasGpuLimit = lines.some((l) => !l.trim().startsWith('#') && l.includes('nvidia.com/gpu'));
   if (!hasGpuLimit) {
     const resourceIdx = lines.findIndex((l) => /^\s*resources:/.test(l));
