@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGetChartValues, useDeployChart } from '@/hooks/service/catalog';
-import { checkYamlSecurity } from '@/util/checkYamlSecurity';
+import { checkYamlSecurity, autoFixYaml } from '@/util/checkYamlSecurity';
 import { SecurityCheckPopup } from './SecurityCheckPopup';
 import { DeploymentEstimateModal } from '../cost/DeploymentEstimateModal';
 
@@ -99,6 +99,10 @@ export const DeployCatalogModal = ({
       <SecurityCheckPopup
         warnings={securityWarnings}
         onEdit={() => setStep('form')}
+        onAutoFix={() => {
+          setValuesContent(autoFixYaml(valuesContent));
+          setStep('form');
+        }}
         onProceed={() => setStep('estimate')}
       />
     );

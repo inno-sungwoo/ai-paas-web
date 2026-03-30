@@ -8,6 +8,7 @@ export const useGetAuditEvents = (cluster: string, namespace: string) => {
     queryFn: () =>
       api.get<AuditEvent[]>('audit/events', { searchParams: { cluster, namespace } }).json(),
     enabled: !!cluster && !!namespace,
+    refetchInterval: 30000,
   });
   return { events: data ?? [], isPending, isError };
 };
