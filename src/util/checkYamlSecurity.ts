@@ -59,8 +59,9 @@ export function autoFixYaml(yamlContent: string): string {
       const indent = lines[resourceIdx].match(/^(\s*)/)?.[1] ?? '';
       const limitsIdx = lines.findIndex((l, i) => i > resourceIdx && /^\s*limits:/.test(l));
       if (limitsIdx >= 0) {
-        // limits 블록이 이미 있으면 그 안에 추가
-        lines.splice(limitsIdx + 1, 0, `${indent}      nvidia.com/gpu: "1"`);
+        // limits 블록이 이미 있으면 그 안에 추가 (limits의 들여쓰기 + 2칸)
+        const limitsIndent = lines[limitsIdx].match(/^(\s*)/)?.[1] ?? '';
+        lines.splice(limitsIdx + 1, 0, `${limitsIndent}  nvidia.com/gpu: "1"`);
       } else {
         // limits 블록이 없으면 새로 추가
         lines.splice(resourceIdx + 1, 0, `${indent}  limits:`, `${indent}    nvidia.com/gpu: "1"`);

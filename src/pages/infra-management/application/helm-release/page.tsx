@@ -5,6 +5,8 @@ import { HelmReleaseTable } from '@/components/features/monitoring/HelmReleaseTa
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { ReleaseStatus } from '@/types/monitoring';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
+import { useToast } from '@/components/ui/toast';
 
 type OptionType = { text: string; value: string };
 
@@ -21,6 +23,8 @@ export default function ApplicationHelmReleasePage() {
   const [hiddenNames, setHiddenNames] = useState<Set<string>>(new Set());
   const [deletingNames, setDeletingNames] = useState<Set<string>>(new Set());
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<ReleaseStatus | null>(null);
+  const { addToast } = useToast();
 
   const deleteMutation = useMutation({
     mutationFn: (release: ReleaseStatus) =>
@@ -34,6 +38,7 @@ export default function ApplicationHelmReleasePage() {
       setDeletingNames((prev) => new Set(prev).add(release.name));
     },
     onSuccess: (_data, release) => {
+      addToast('success', `"${release.name}" 릴리즈가 삭제되었습니다.`);
       // 삭제 중 해제 + 숨김 목록에 추가
       setDeletingNames((prev) => {
         const n = new Set(prev);
@@ -58,6 +63,7 @@ export default function ApplicationHelmReleasePage() {
         return n;
       });
       setDeleteError(`"${release.name}" 삭제에 실패했습니다. 다시 시도해주세요.`);
+      addToast('error', `"${release.name}" 삭제 실패`);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['charts'] });
@@ -70,14 +76,8 @@ export default function ApplicationHelmReleasePage() {
   };
 
   const handleDelete = (release: ReleaseStatus) => {
-    if (deletingNames.has(release.name)) return; // 이미 삭제 중
-    if (
-      confirm(
-        `"${release.name}" 릴리즈를 삭제하시겠습니까?\n네임스페이스: ${release.namespace}\n이 작업은 되돌릴 수 없습니다.`
-      )
-    ) {
-      deleteMutation.mutate(release);
-    }
+    if (deletingNames.has(release.name)) return;
+    setConfirmTarget(release);
   };
 
   // 네임스페이스 목록 추출 (중복 제거)
@@ -148,6 +148,20 @@ export default function ApplicationHelmReleasePage() {
           />
         </div>
       </div>
+      {confirmTarget && (
+        <ConfirmModal
+          title="릴리즈 삭제"
+          message={`"${confirmTarget.name}" 릴리즈를 삭제하시겠습니까?`}
+          detail={`네임스페이스: ${confirmTarget.namespace}\n이 작업은 되돌릴 수 없습니다.`}
+          confirmText="삭제"
+          variant="danger"
+          onConfirm={() => {
+            deleteMutation.mutate(confirmTarget);
+            setConfirmTarget(null);
+          }}
+          onCancel={() => setConfirmTarget(null)}
+        />
+      )}
     </main>
   );
 }

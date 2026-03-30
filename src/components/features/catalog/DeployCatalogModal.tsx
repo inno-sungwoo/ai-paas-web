@@ -7,6 +7,7 @@ import { useGetChartValues, useDeployChart } from '@/hooks/service/catalog';
 import { checkYamlSecurity, autoFixYaml } from '@/util/checkYamlSecurity';
 import { SecurityCheckPopup } from './SecurityCheckPopup';
 import { DeploymentEstimateModal } from '../cost/DeploymentEstimateModal';
+import { useToast } from '@/components/ui/toast';
 
 interface DeployCatalogModalProps {
   repoName: string;
@@ -28,8 +29,9 @@ export const DeployCatalogModal = ({
   const [releaseName, setReleaseName] = useState('');
   const [namespace, setNamespace] = useState('ai-pass3');
   const [clusterId, setClusterId] = useState('innogrid-aikube');
-  const [version, setVersion] = useState(chartVersion);
+  const [version] = useState(chartVersion);
   const [step, setStep] = useState<Step>('form');
+  const { addToast } = useToast();
 
   // version 파라미터 없이 호출 — 최신 버전 values를 가져옴 (version 지정 시 캐시 미스 방지)
   const { chartValues, isPending: valuesLoading } = useGetChartValues(repoName, chartName);
@@ -67,6 +69,7 @@ export const DeployCatalogModal = ({
       { repoName, chartName, releaseName, clusterId, namespace, version, valuesContent },
       {
         onSuccess: () => {
+          addToast('success', `"${releaseName}" 배포가 시작되었습니다.`);
           onSuccess();
           onClose();
         },
@@ -119,6 +122,8 @@ export const DeployCatalogModal = ({
         onConfirm={handleConfirmDeploy}
         confirmLabel="배포"
         isConfirming={deployMutation.isPending}
+        releaseName={releaseName}
+        namespace={namespace}
       />
     );
   }

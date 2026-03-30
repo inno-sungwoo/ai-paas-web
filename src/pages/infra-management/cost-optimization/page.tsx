@@ -6,6 +6,8 @@ import { IdleWarningBanner } from '@/components/features/cost/IdleWarningBanner'
 import { CostSummaryChart } from '@/components/features/cost/CostSummaryChart';
 import { UsageReportTable } from '@/components/features/cost/UsageReportTable';
 import { DeploymentEstimateModal } from '@/components/features/cost/DeploymentEstimateModal';
+import { GpuOverrunBanner } from '@/components/features/cost/GpuOverrunBanner';
+import { SkeletonCard } from '@/components/ui/skeleton';
 
 type OptionType = { text: string; value: string };
 
@@ -62,44 +64,116 @@ export default function CostOptimizationPage() {
 
         {/* 요약 카드 4개 */}
         <div className="page-mt-16 flex gap-4">
-          <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
-            <div className="text-xs text-[#999]">일 비용</div>
-            <div className="mt-1 text-2xl font-bold text-[#1a1a1a]">
-              {summaryLoading ? '-' : `${dailyCost.toLocaleString()}원`}
-            </div>
-            <div className="mt-0.5 text-xs text-[#999]">/일</div>
-          </div>
-          <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
-            <div className="text-xs text-[#999]">월 예상 비용</div>
-            <div className="mt-1 text-2xl font-bold text-[#1a1a1a]">
-              {summaryLoading
-                ? '-'
-                : monthlyCost >= 10000
-                  ? `${(monthlyCost / 10000).toFixed(0)}만원`
-                  : `${monthlyCost.toLocaleString()}원`}
-            </div>
-            <div className="mt-0.5 text-xs text-[#999]">/월</div>
-          </div>
-          <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
-            <div className="text-xs text-[#999]">GPU 사용</div>
-            <div
-              className={`mt-1 text-2xl font-bold ${totalGpuRequested > gpuCapacity ? 'text-red-500' : 'text-[#1a1a1a]'}`}
-            >
-              {summaryLoading ? '-' : `${totalGpuRequested}/${gpuCapacity}개`}
-            </div>
-            <div className="mt-0.5 text-xs text-[#999]">
-              {totalGpuRequested > gpuCapacity ? '초과 할당' : '할당 / 보유'}
-            </div>
-          </div>
-          <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
-            <div className="text-xs text-[#999]">현재 활용률</div>
-            <div
-              className={`mt-1 text-2xl font-bold ${gpuUtil >= 50 ? 'text-[#1a1a1a]' : gpuUtil > 0 ? 'text-yellow-500' : 'text-[#999]'}`}
-            >
-              {monitoringSummary ? `${gpuUtil.toFixed(1)}%` : '-'}
-            </div>
-            <div className="mt-0.5 text-xs text-[#999]">실시간</div>
-          </div>
+          {summaryLoading ? (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : (
+            <>
+              <div className="flex flex-1 items-center gap-3 rounded-lg border border-[#e8e8e8] bg-white p-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <circle cx="10" cy="10" r="7" stroke="#3b82f6" strokeWidth="2" fill="none" />
+                    <path
+                      d="M10 6v4.5l3 1.5"
+                      stroke="#3b82f6"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
+                <div>
+                  <div className="text-xs text-[#999]">일 비용</div>
+                  <div className="mt-0.5 text-2xl font-bold text-[#1a1a1a]">
+                    {dailyCost.toLocaleString()}원
+                  </div>
+                  <div className="text-xs text-[#999]">/일</div>
+                </div>
+              </div>
+              <div className="flex flex-1 items-center gap-3 rounded-lg border border-[#e8e8e8] bg-white p-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-50">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <rect x="3" y="8" width="3" height="9" rx="1" fill="#a855f7" />
+                    <rect x="8.5" y="5" width="3" height="12" rx="1" fill="#a855f7" opacity="0.7" />
+                    <rect x="14" y="3" width="3" height="14" rx="1" fill="#a855f7" opacity="0.4" />
+                  </svg>
+                </span>
+                <div>
+                  <div className="text-xs text-[#999]">월 예상 비용</div>
+                  <div className="mt-0.5 text-2xl font-bold text-[#1a1a1a]">
+                    {monthlyCost >= 10000
+                      ? `${(monthlyCost / 10000).toFixed(0)}만원`
+                      : `${monthlyCost.toLocaleString()}원`}
+                  </div>
+                  <div className="text-xs text-[#999]">/월</div>
+                </div>
+              </div>
+              <div className="flex flex-1 items-center gap-3 rounded-lg border border-[#e8e8e8] bg-white p-4">
+                <span
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${totalGpuRequested > gpuCapacity ? 'bg-red-50' : 'bg-green-50'}`}
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <rect
+                      x="2"
+                      y="6"
+                      width="16"
+                      height="10"
+                      rx="2"
+                      fill={totalGpuRequested > gpuCapacity ? '#ef4444' : '#22c55e'}
+                    />
+                    <rect
+                      x="5"
+                      y="3"
+                      width="10"
+                      height="4"
+                      rx="1"
+                      fill={totalGpuRequested > gpuCapacity ? '#ef4444' : '#22c55e'}
+                      opacity="0.5"
+                    />
+                  </svg>
+                </span>
+                <div>
+                  <div className="text-xs text-[#999]">GPU 사용</div>
+                  <div
+                    className={`mt-0.5 text-2xl font-bold ${totalGpuRequested > gpuCapacity ? 'text-red-500' : 'text-[#1a1a1a]'}`}
+                  >
+                    {totalGpuRequested}/{gpuCapacity}개
+                  </div>
+                  <div className="text-xs text-[#999]">
+                    {totalGpuRequested > gpuCapacity ? '초과 할당' : '할당 / 보유'}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-1 items-center gap-3 rounded-lg border border-[#e8e8e8] bg-white p-4">
+                <span
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${gpuUtil >= 50 ? 'bg-green-50' : gpuUtil > 0 ? 'bg-yellow-50' : 'bg-[#f5f5f5]'}`}
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M10 2l2.5 5.5L18 8.5l-4 4 1 5.5L10 15.5 5 18l1-5.5-4-4 5.5-1L10 2z"
+                      fill={gpuUtil >= 50 ? '#22c55e' : gpuUtil > 0 ? '#eab308' : '#999'}
+                    />
+                  </svg>
+                </span>
+                <div>
+                  <div className="text-xs text-[#999]">현재 활용률</div>
+                  <div
+                    className={`mt-0.5 text-2xl font-bold ${gpuUtil >= 50 ? 'text-[#1a1a1a]' : gpuUtil > 0 ? 'text-yellow-500' : 'text-[#999]'}`}
+                  >
+                    {monitoringSummary ? `${gpuUtil.toFixed(1)}%` : '-'}
+                  </div>
+                  <div className="text-xs text-[#999]">실시간</div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="page-mt-16">
+          <GpuOverrunBanner />
         </div>
 
         <div className="page-mt-16">

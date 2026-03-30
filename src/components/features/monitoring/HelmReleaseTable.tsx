@@ -68,7 +68,21 @@ export const HelmReleaseTable = ({
 
   if (isPending) {
     return (
-      <div className="flex items-center justify-center py-8 text-sm text-[#999]">로딩 중...</div>
+      <div className="flex flex-col items-center justify-center gap-2 py-12">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#e8e8e8] border-t-blue-500" />
+        <span className="text-sm text-[#999]">릴리즈 정보를 불러오는 중...</span>
+      </div>
+    );
+  }
+
+  if (releases.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-2 py-12 text-[#999]">
+        <svg width="40" height="40" viewBox="0 0 20 20" fill="none">
+          <path d="M4 4h12v12H4V4zm2 2v8h8V6H6z" fill="#e8e8e8" />
+        </svg>
+        <span className="text-sm">배포된 릴리즈가 없습니다</span>
+      </div>
     );
   }
 

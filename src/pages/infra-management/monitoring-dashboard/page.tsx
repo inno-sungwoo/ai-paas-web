@@ -18,6 +18,7 @@ import {
 } from '@/hooks/service/monitoring';
 import { HelmReleaseTable } from '@/components/features/monitoring/HelmReleaseTable';
 import { GpuStatusTable } from '@/components/features/monitoring/GpuStatusTable';
+import { SkeletonCard } from '@/components/ui/skeleton';
 
 type OptionType = { text: string; value: string };
 
@@ -111,30 +112,81 @@ export default function MonitoringPage() {
 
         {/* Summary Cards */}
         <div className="page-mt-16 flex gap-4">
-          <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
-            <div className="text-xs text-[#999]">헬름 릴리즈</div>
-            <div className="mt-1 text-2xl font-bold text-[#1a1a1a]">
-              {summary?.helmReleaseCount ?? '-'}
-            </div>
-          </div>
-          <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
-            <div className="text-xs text-[#999]">GPU 수</div>
-            <div className="mt-1 text-2xl font-bold text-[#1a1a1a]">{summary?.gpuCount ?? '-'}</div>
-          </div>
-          <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
-            <div className="text-xs text-[#999]">평균 GPU 활용률</div>
-            <div className="mt-1 text-2xl font-bold text-[#1a1a1a]">
-              {summary?.avgGpuUtil != null ? `${summary.avgGpuUtil.toFixed(1)}%` : '-'}
-            </div>
-          </div>
-          <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
-            <div className="text-xs text-[#999]">활성 알림</div>
-            <div
-              className={`mt-1 text-2xl font-bold ${(summary?.activeAlertCount ?? 0) > 0 ? 'text-red-500' : 'text-[#1a1a1a]'}`}
-            >
-              {summary?.activeAlertCount ?? '-'}
-            </div>
-          </div>
+          {!summary ? (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : (
+            <>
+              <div className="flex flex-1 items-center gap-3 rounded-lg border border-[#e8e8e8] bg-white p-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 6a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zm0 6a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2z"
+                      fill="#3b82f6"
+                    />
+                  </svg>
+                </span>
+                <div>
+                  <div className="text-xs text-[#999]">헬름 릴리즈</div>
+                  <div className="mt-0.5 text-2xl font-bold text-[#1a1a1a]">
+                    {summary.helmReleaseCount}
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-1 items-center gap-3 rounded-lg border border-[#e8e8e8] bg-white p-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-50">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <rect x="2" y="6" width="16" height="10" rx="2" fill="#22c55e" />
+                    <rect x="5" y="3" width="10" height="4" rx="1" fill="#22c55e" opacity="0.5" />
+                  </svg>
+                </span>
+                <div>
+                  <div className="text-xs text-[#999]">GPU 수</div>
+                  <div className="mt-0.5 text-2xl font-bold text-[#1a1a1a]">{summary.gpuCount}</div>
+                </div>
+              </div>
+              <div className="flex flex-1 items-center gap-3 rounded-lg border border-[#e8e8e8] bg-white p-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-yellow-50">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M10 2l2.5 5.5L18 8.5l-4 4 1 5.5L10 15.5 5 18l1-5.5-4-4 5.5-1L10 2z"
+                      fill="#eab308"
+                    />
+                  </svg>
+                </span>
+                <div>
+                  <div className="text-xs text-[#999]">평균 GPU 활용률</div>
+                  <div className="mt-0.5 text-2xl font-bold text-[#1a1a1a]">
+                    {summary.avgGpuUtil.toFixed(1)}%
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-1 items-center gap-3 rounded-lg border border-[#e8e8e8] bg-white p-4">
+                <span
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${summary.activeAlertCount > 0 ? 'bg-red-50' : 'bg-[#f5f5f5]'}`}
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path
+                      d="M10 2a1 1 0 01.894.553l7 14A1 1 0 0117 18H3a1 1 0 01-.894-1.447l7-14A1 1 0 0110 2zm0 5a1 1 0 00-1 1v3a1 1 0 002 0V8a1 1 0 00-1-1zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                      fill={summary.activeAlertCount > 0 ? '#ef4444' : '#999'}
+                    />
+                  </svg>
+                </span>
+                <div>
+                  <div className="text-xs text-[#999]">활성 알림</div>
+                  <div
+                    className={`mt-0.5 text-2xl font-bold ${summary.activeAlertCount > 0 ? 'text-red-500' : 'text-[#1a1a1a]'}`}
+                  >
+                    {summary.activeAlertCount}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
         <div className="page-content-detail-col2 page-mt-16">
           <div className="page-detail-round-box page-flex-1 page-mt-0">
