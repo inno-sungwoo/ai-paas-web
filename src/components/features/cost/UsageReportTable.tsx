@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router';
 import { Table, Badge, useTablePagination } from '@innogrid/ui';
 import type { DailyEntry } from '@/types/monitoring';
 
@@ -9,7 +8,6 @@ interface UsageReportTableProps {
 
 export const UsageReportTable = ({ entries, isPending }: UsageReportTableProps) => {
   const { pagination, setPagination } = useTablePagination();
-  const navigate = useNavigate();
 
   if (isPending) {
     return (
@@ -91,10 +89,8 @@ export const UsageReportTable = ({ entries, isPending }: UsageReportTableProps) 
               variant="soft"
               size="small"
               style={{ cursor: 'pointer' }}
-              onClick={() =>
-                navigate('/infra-management/application/helm-release', {
-                  state: { filterNamespace: row.original.namespace },
-                })
+              onClick={() => {
+                window.location.href = '/infra-management/application/helm-release';
               }
             >
               릴리즈 정리 →

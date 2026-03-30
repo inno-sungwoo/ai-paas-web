@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router';
+import { useState } from 'react';
 import { BreadCrumb, Select, type SelectSingleValue } from '@innogrid/ui';
 import { useGetMonitoringReleases } from '@/hooks/service/monitoring';
 import { HelmReleaseTable } from '@/components/features/monitoring/HelmReleaseTable';
@@ -12,19 +11,10 @@ type OptionType = { text: string; value: string };
 const clusterOptions = [{ text: 'innogrid-aikube', value: 'innogrid-aikube' }];
 
 export default function ApplicationHelmReleasePage() {
-  const location = useLocation();
   const [selectedValue, setSelectedValue] = useState<OptionType>(clusterOptions[0]);
   const cluster = selectedValue?.value ?? 'innogrid-aikube';
   const { releases, isPending } = useGetMonitoringReleases(cluster);
   const [nsFilter, setNsFilter] = useState<OptionType | null>(null);
-
-  // 비용 최적화 페이지에서 네임스페이스 필터 전달받기
-  useEffect(() => {
-    const filterNs = (location.state as { filterNamespace?: string })?.filterNamespace;
-    if (filterNs) {
-      setNsFilter({ text: filterNs, value: filterNs });
-    }
-  }, [location.state]);
   const queryClient = useQueryClient();
 
   // 삭제 중인 릴리즈 + 삭제 완료 후 Prometheus 동기화 대기 중인 릴리즈
