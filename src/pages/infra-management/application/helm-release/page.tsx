@@ -25,9 +25,10 @@ export default function ApplicationHelmReleasePage() {
         })
         .json(),
     onSettled: () => {
-      // 성공/실패 모두 목록 즉시 갱신
+      // 성공/실패 모두 관련 데이터 즉시 갱신
       queryClient.invalidateQueries({ queryKey: ['monitoring'] });
       queryClient.invalidateQueries({ queryKey: ['charts'] });
+      queryClient.invalidateQueries({ queryKey: ['cost'] });
     },
   });
 

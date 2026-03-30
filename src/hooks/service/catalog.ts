@@ -92,6 +92,7 @@ export const useDeployChart = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['charts'] });
       queryClient.invalidateQueries({ queryKey: ['monitoring'] });
+      queryClient.invalidateQueries({ queryKey: ['cost'] });
     },
   });
 };
