@@ -24,8 +24,24 @@ export default function ApplicationHelmReleasePage() {
           searchParams: { clusterId: cluster, namespace: release.namespace },
         })
         .json(),
+    onMutate: async (release) => {
+      // Optimistic Update: 삭제 요청 즉시 목록에서 제거
+      await queryClient.cancelQueries({ queryKey: ['monitoring', 'releases', cluster] });
+      const prev = queryClient.getQueryData(['monitoring', 'releases', cluster]);
+      queryClient.setQueryData(['monitoring', 'releases', cluster], (old: unknown) => {
+        if (!Array.isArray(old)) return old;
+        return old.filter((r: ReleaseStatus) => r.name !== release.name);
+      });
+      return { prev };
+    },
+    onError: (_err, _release, context) => {
+      // 실패 시 이전 데이터로 복원
+      if (context?.prev) {
+        queryClient.setQueryData(['monitoring', 'releases', cluster], context.prev);
+      }
+    },
     onSettled: () => {
-      // 성공/실패 모두 관련 데이터 즉시 갱신
+      // Prometheus 메트릭 반영 후 최종 동기화 (30초 뒤)
       queryClient.invalidateQueries({ queryKey: ['monitoring'] });
       queryClient.invalidateQueries({ queryKey: ['charts'] });
       queryClient.invalidateQueries({ queryKey: ['cost'] });
