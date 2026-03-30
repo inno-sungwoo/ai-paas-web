@@ -15,7 +15,7 @@ export function checkYamlSecurity(yamlContent: string): SecurityWarning[] {
       severity: 'warning',
       message:
         'GPU 리소스 제한이 설정되지 않았습니다. resources.limits에 nvidia.com/gpu를 추가하세요.',
-      fix: '기존 resources: 블록을 찾아서 아래처럼 수정하세요:\n\nresources:\n  limits:\n    nvidia.com/gpu: "1"\n    cpu: 500m\n    memory: 512Mi',
+      fix: 'resources.limits에 추가:\n  nvidia.com/gpu: "1"',
     });
   }
 
@@ -29,7 +29,7 @@ export function checkYamlSecurity(yamlContent: string): SecurityWarning[] {
       warnings.push({
         severity: 'error',
         message: `루트 권한 컨테이너가 감지되었습니다 (${i + 1}행)`,
-        fix: `${i + 1}행을 아래로 변경:\nprivileged: false`,
+        fix: `${i + 1}행: privileged: false 로 변경`,
         line: i + 1,
       });
     }
@@ -50,8 +50,7 @@ export function checkYamlSecurity(yamlContent: string): SecurityWarning[] {
   if (hasIngressEnabled && !hasAuth) {
     warnings.push({
       severity: 'warning',
-      message: 'Ingress가 활성화되어 있지만 인증 설정이 없습니다.',
-      fix: '기존 ingress: 블록에 annotations를 추가하고, K8s Secret도 생성하세요:\n\ningress:\n  enabled: true\n  annotations:\n    nginx.ingress.kubernetes.io/auth-type: basic\n    nginx.ingress.kubernetes.io/auth-secret: basic-auth\n\n# Secret 생성: kubectl create secret generic basic-auth --from-file=auth -n ai-pass3',
+      message: 'Ingress가 활성화되어 있지만 인증 설정이 없습니다. 외부에서 무단 접근이 가능합니다.',
     });
   }
 

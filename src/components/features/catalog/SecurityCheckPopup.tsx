@@ -30,7 +30,9 @@ export const SecurityCheckPopup = ({
               {w.fix && (
                 <div className="mt-2 ml-4">
                   <span className="text-xs text-red-500">자동 수정 내용:</span>
-                  <pre className="mt-1 rounded bg-red-100 p-2 text-xs text-red-800">{w.fix}</pre>
+                  <pre className="mt-1 rounded bg-red-100 p-2 text-xs break-words whitespace-pre-wrap text-red-800">
+                    {w.fix}
+                  </pre>
                 </div>
               )}
             </div>
@@ -44,7 +46,7 @@ export const SecurityCheckPopup = ({
               {w.fix && (
                 <div className="mt-2 ml-4">
                   <span className="text-xs text-yellow-600">자동 수정 내용:</span>
-                  <pre className="mt-1 rounded bg-yellow-100 p-2 text-xs text-yellow-800">
+                  <pre className="mt-1 rounded bg-yellow-100 p-2 text-xs break-words whitespace-pre-wrap text-yellow-800">
                     {w.fix}
                   </pre>
                 </div>
