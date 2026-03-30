@@ -17,6 +17,8 @@ export default function ApplicationHelmReleasePage() {
   const [nsFilter, setNsFilter] = useState<OptionType | null>(null);
   const queryClient = useQueryClient();
 
+  // 삭제 중인 릴리즈 + 삭제 완료 후 Prometheus 동기화 대기 중인 릴리즈
+  const [hiddenNames, setHiddenNames] = useState<Set<string>>(new Set());
   const [deletingNames, setDeletingNames] = useState<Set<string>>(new Set());
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -32,28 +34,32 @@ export default function ApplicationHelmReleasePage() {
       setDeletingNames((prev) => new Set(prev).add(release.name));
     },
     onSuccess: (_data, release) => {
-      // 성공: 서버 응답 확인 후 목록에서 즉시 제거
+      // 삭제 중 해제 + 숨김 목록에 추가
       setDeletingNames((prev) => {
-        const next = new Set(prev);
-        next.delete(release.name);
-        return next;
+        const n = new Set(prev);
+        n.delete(release.name);
+        return n;
       });
-      queryClient.setQueryData(['monitoring', 'releases', cluster], (old: unknown) => {
-        if (!Array.isArray(old)) return old;
-        return old.filter((r: ReleaseStatus) => r.name !== release.name);
-      });
+      setHiddenNames((prev) => new Set(prev).add(release.name));
+      // 60초 후 숨김 해제 (Prometheus 동기화 완료 시점)
+      setTimeout(() => {
+        setHiddenNames((prev) => {
+          const n = new Set(prev);
+          n.delete(release.name);
+          return n;
+        });
+        queryClient.invalidateQueries({ queryKey: ['monitoring'] });
+      }, 60000);
     },
     onError: (_err, release) => {
-      // 실패: 삭제 중 상태 해제 + 에러 메시지
       setDeletingNames((prev) => {
-        const next = new Set(prev);
-        next.delete(release.name);
-        return next;
+        const n = new Set(prev);
+        n.delete(release.name);
+        return n;
       });
       setDeleteError(`"${release.name}" 삭제에 실패했습니다. 다시 시도해주세요.`);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['monitoring'] });
       queryClient.invalidateQueries({ queryKey: ['charts'] });
       queryClient.invalidateQueries({ queryKey: ['cost'] });
     },
@@ -81,10 +87,11 @@ export default function ApplicationHelmReleasePage() {
     ...namespaces.map((ns) => ({ text: ns, value: ns })),
   ];
 
-  // 1. 네임스페이스 필터 적용
+  // 1. 삭제 완료된 릴리즈 숨김 + 네임스페이스 필터
+  const visible = releases.filter((r) => !hiddenNames.has(r.name));
   const filtered = nsFilter?.value
-    ? releases.filter((r) => r.namespace === nsFilter.value)
-    : releases;
+    ? visible.filter((r) => r.namespace === nsFilter.value)
+    : visible;
 
   // 2. 최신 배포순 정렬
   const sorted = [...filtered].sort((a, b) => {
