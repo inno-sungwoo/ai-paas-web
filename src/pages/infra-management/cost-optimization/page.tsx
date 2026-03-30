@@ -29,7 +29,7 @@ export default function CostOptimizationPage() {
   const dailyCost = costSummary?.totalGpuCostKrw ?? 0;
   const monthlyCost = dailyCost * 30;
   const totalGpuRequested = costSummary?.teams.reduce((sum, t) => sum + t.gpuCount, 0) ?? 0;
-  const gpuCapacity = 4; // K8s capacity (time-slicing)
+  const gpuCapacity = monitoringSummary?.gpuCount ?? 4; // GPU 현황 (mock: 4x RTX 3060)
   const gpuUtil = monitoringSummary?.avgGpuUtil ?? 0;
 
   return (
@@ -81,14 +81,14 @@ export default function CostOptimizationPage() {
             <div className="mt-0.5 text-xs text-[#999]">/월</div>
           </div>
           <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
-            <div className="text-xs text-[#999]">GPU 할당</div>
+            <div className="text-xs text-[#999]">GPU 사용</div>
             <div
               className={`mt-1 text-2xl font-bold ${totalGpuRequested > gpuCapacity ? 'text-red-500' : 'text-[#1a1a1a]'}`}
             >
               {summaryLoading ? '-' : `${totalGpuRequested}/${gpuCapacity}개`}
             </div>
             <div className="mt-0.5 text-xs text-[#999]">
-              {totalGpuRequested > gpuCapacity ? '초과 할당' : '요청 / 전체'}
+              {totalGpuRequested > gpuCapacity ? '초과 할당' : '할당 / 보유'}
             </div>
           </div>
           <div className="flex-1 rounded-lg border border-[#e8e8e8] bg-white p-4">
