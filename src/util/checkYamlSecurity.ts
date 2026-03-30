@@ -35,19 +35,6 @@ export function checkYamlSecurity(yamlContent: string): SecurityWarning[] {
     }
   });
 
-  // image.tag: latest 사용 시 경고 (버전 고정 안 됨 → 재현성 없음)
-  const hasLatestTag = lines.some(
-    (l) => !l.trim().startsWith('#') && /tag:\s*["']?latest["']?\s*$/.test(l.trim())
-  );
-  if (hasLatestTag) {
-    warnings.push({
-      severity: 'warning',
-      message:
-        '이미지 태그가 latest입니다. 버전을 고정하지 않으면 배포 재현성이 보장되지 않습니다.',
-      fix: 'tag: latest → 특정 버전으로 변경',
-    });
-  }
-
   return warnings;
 }
 
@@ -63,15 +50,7 @@ export function autoFixYaml(yamlContent: string): string {
     return line;
   });
 
-  // 2. tag: latest → tag: stable
-  lines = lines.map((line) => {
-    if (!line.trim().startsWith('#') && /tag:\s*["']?latest["']?\s*$/.test(line.trim())) {
-      return line.replace(/tag:\s*["']?latest["']?/, 'tag: stable');
-    }
-    return line;
-  });
-
-  // 3. GPU limits 없으면 resources 블록에 추가
+  // 2. GPU limits 없으면 resources 블록에 추가
   const hasGpuLimit = lines.some((l) => !l.trim().startsWith('#') && l.includes('nvidia.com/gpu'));
   if (!hasGpuLimit) {
     const resourceIdx = lines.findIndex((l) => /^\s*resources:/.test(l));
