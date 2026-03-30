@@ -91,7 +91,7 @@ export const UsageReportTable = ({ entries, isPending }: UsageReportTableProps) 
               style={{ cursor: 'pointer' }}
               onClick={() => {
                 window.location.href = '/infra-management/application/helm-release';
-              }
+              }}
             >
               릴리즈 정리 →
             </Badge>
