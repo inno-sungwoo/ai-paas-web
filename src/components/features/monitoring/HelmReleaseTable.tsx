@@ -5,6 +5,7 @@ interface HelmReleaseTableProps {
   releases: ReleaseStatus[];
   isPending: boolean;
   onDelete?: (release: ReleaseStatus) => void;
+  deletingNames?: Set<string>;
 }
 
 const baseColumns = [
@@ -57,7 +58,12 @@ const baseColumns = [
   },
 ];
 
-export const HelmReleaseTable = ({ releases, isPending, onDelete }: HelmReleaseTableProps) => {
+export const HelmReleaseTable = ({
+  releases,
+  isPending,
+  onDelete,
+  deletingNames,
+}: HelmReleaseTableProps) => {
   const { pagination, setPagination } = useTablePagination();
 
   if (isPending) {
@@ -74,17 +80,27 @@ export const HelmReleaseTable = ({ releases, isPending, onDelete }: HelmReleaseT
           header: '삭제',
           size: 70,
           enableSorting: false,
-          cell: ({ row }: { row: { original: ReleaseStatus } }) => (
-            <Badge
-              color="error"
-              variant="soft"
-              size="small"
-              style={{ cursor: 'pointer' }}
-              onClick={() => onDelete(row.original)}
-            >
-              삭제
-            </Badge>
-          ),
+          cell: ({ row }: { row: { original: ReleaseStatus } }) => {
+            const isDeleting = deletingNames?.has(row.original.name);
+            if (isDeleting) {
+              return (
+                <Badge color="warning" variant="soft" size="small">
+                  삭제 중…
+                </Badge>
+              );
+            }
+            return (
+              <Badge
+                color="error"
+                variant="soft"
+                size="small"
+                style={{ cursor: 'pointer' }}
+                onClick={() => onDelete(row.original)}
+              >
+                삭제
+              </Badge>
+            );
+          },
         },
       ]
     : baseColumns;

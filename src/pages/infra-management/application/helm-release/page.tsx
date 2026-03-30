@@ -17,6 +17,9 @@ export default function ApplicationHelmReleasePage() {
   const [nsFilter, setNsFilter] = useState<OptionType | null>(null);
   const queryClient = useQueryClient();
 
+  const [deletingNames, setDeletingNames] = useState<Set<string>>(new Set());
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const deleteMutation = useMutation({
     mutationFn: (release: ReleaseStatus) =>
       api
@@ -24,24 +27,32 @@ export default function ApplicationHelmReleasePage() {
           searchParams: { clusterId: cluster, namespace: release.namespace },
         })
         .json(),
-    onMutate: async (release) => {
-      // Optimistic Update: 삭제 요청 즉시 목록에서 제거
-      await queryClient.cancelQueries({ queryKey: ['monitoring', 'releases', cluster] });
-      const prev = queryClient.getQueryData(['monitoring', 'releases', cluster]);
+    onMutate: (release) => {
+      setDeleteError(null);
+      setDeletingNames((prev) => new Set(prev).add(release.name));
+    },
+    onSuccess: (_data, release) => {
+      // 성공: 서버 응답 확인 후 목록에서 즉시 제거
+      setDeletingNames((prev) => {
+        const next = new Set(prev);
+        next.delete(release.name);
+        return next;
+      });
       queryClient.setQueryData(['monitoring', 'releases', cluster], (old: unknown) => {
         if (!Array.isArray(old)) return old;
         return old.filter((r: ReleaseStatus) => r.name !== release.name);
       });
-      return { prev };
     },
-    onError: (_err, _release, context) => {
-      // 실패 시 이전 데이터로 복원
-      if (context?.prev) {
-        queryClient.setQueryData(['monitoring', 'releases', cluster], context.prev);
-      }
+    onError: (_err, release) => {
+      // 실패: 삭제 중 상태 해제 + 에러 메시지
+      setDeletingNames((prev) => {
+        const next = new Set(prev);
+        next.delete(release.name);
+        return next;
+      });
+      setDeleteError(`"${release.name}" 삭제에 실패했습니다. 다시 시도해주세요.`);
     },
     onSettled: () => {
-      // Prometheus 메트릭 반영 후 최종 동기화 (30초 뒤)
       queryClient.invalidateQueries({ queryKey: ['monitoring'] });
       queryClient.invalidateQueries({ queryKey: ['charts'] });
       queryClient.invalidateQueries({ queryKey: ['cost'] });
@@ -53,6 +64,7 @@ export default function ApplicationHelmReleasePage() {
   };
 
   const handleDelete = (release: ReleaseStatus) => {
+    if (deletingNames.has(release.name)) return; // 이미 삭제 중
     if (
       confirm(
         `"${release.name}" 릴리즈를 삭제하시겠습니까?\n네임스페이스: ${release.namespace}\n이 작업은 되돌릴 수 없습니다.`
@@ -112,16 +124,21 @@ export default function ApplicationHelmReleasePage() {
           />
           <span className="text-xs text-[#999]">
             {sorted.length}개 릴리즈 (최신 배포순)
-            {deleteMutation.isPending && ' · 삭제 중...'}
+            {deletingNames.size > 0 && ` · ${deletingNames.size}개 삭제 중...`}
           </span>
         </div>
-        {deleteMutation.isError && (
+        {deleteError && (
           <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            삭제에 실패했습니다. 다시 시도해주세요.
+            {deleteError}
           </div>
         )}
         <div className="page-mt-16">
-          <HelmReleaseTable releases={sorted} isPending={isPending} onDelete={handleDelete} />
+          <HelmReleaseTable
+            releases={sorted}
+            isPending={isPending}
+            onDelete={handleDelete}
+            deletingNames={deletingNames}
+          />
         </div>
       </div>
     </main>
