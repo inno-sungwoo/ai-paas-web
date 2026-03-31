@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useGetCostEstimate } from '@/hooks/service/cost';
-import { saveReservation } from '@/util/gpuReservation';
+import { useGetCostEstimate, useCreateGpuReservation } from '@/hooks/service/cost';
 
 type TimeUnit = 'min' | 'hour' | 'day';
 
@@ -11,6 +10,7 @@ interface DeploymentEstimateModalProps {
   isConfirming?: boolean;
   releaseName?: string;
   namespace?: string;
+  clusterId?: string;
 }
 
 function toHours(value: number, unit: TimeUnit): number {
@@ -32,8 +32,10 @@ export const DeploymentEstimateModal = ({
   isConfirming = false,
   releaseName,
   namespace,
+  clusterId = 'innogrid-aikube',
 }: DeploymentEstimateModalProps) => {
   const [gpuCount, setGpuCount] = useState(1);
+  const createReservation = useCreateGpuReservation();
   const [timeValue, setTimeValue] = useState(24);
   const [timeUnit, setTimeUnit] = useState<TimeUnit>('hour');
 
@@ -46,12 +48,12 @@ export const DeploymentEstimateModal = ({
 
   const handleConfirm = () => {
     if (releaseName && costEstimate) {
-      saveReservation({
+      createReservation.mutate({
         releaseName,
         namespace: namespace ?? 'default',
+        clusterId,
         gpuCount,
         estimatedMinutes: toMinutes(timeValue, timeUnit),
-        deployedAt: new Date().toISOString(),
         unitPriceKrw: costEstimate.unitPriceKrw,
         estimatedCostKrw: costEstimate.totalCostKrw,
       });

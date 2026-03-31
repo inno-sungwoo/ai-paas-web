@@ -1,45 +1,60 @@
-import { useState, useEffect } from 'react';
 import {
-  getReservations,
-  getElapsedMinutes,
-  getProgress,
-  getOverrunCostKrw,
-  getCurrentCostKrw,
-  formatDuration,
-  extendReservation,
-  type GpuReservation,
-} from '@/util/gpuReservation';
+  useGetGpuReservations,
+  useExtendGpuReservation,
+  type GpuReservationDto,
+} from '@/hooks/service/cost';
 
-export const GpuOverrunBanner = () => {
-  const [reservations, setReservations] = useState<GpuReservation[]>([]);
-  const [, setTick] = useState(0);
+function getElapsedMinutes(r: GpuReservationDto): number {
+  return (Date.now() - new Date(r.deployedAt).getTime()) / 60000;
+}
 
-  useEffect(() => {
-    setReservations(getReservations());
-    const interval = setInterval(() => {
-      setReservations(getReservations());
-      setTick((t) => t + 1);
-    }, 10000);
-    return () => clearInterval(interval);
-  }, []);
+function getProgress(r: GpuReservationDto): number {
+  return Math.min(Math.round((getElapsedMinutes(r) / r.estimatedMinutes) * 100), 100);
+}
+
+function isOverrun(r: GpuReservationDto): boolean {
+  return getElapsedMinutes(r) > r.estimatedMinutes;
+}
+
+function getOverrunCostKrw(r: GpuReservationDto): number {
+  const overMin = getElapsedMinutes(r) - r.estimatedMinutes;
+  if (overMin <= 0) return 0;
+  return Math.round(r.gpuCount * (overMin / 60) * r.unitPriceKrw);
+}
+
+function getCurrentCostKrw(r: GpuReservationDto): number {
+  return Math.round(r.gpuCount * (getElapsedMinutes(r) / 60) * r.unitPriceKrw);
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${Math.round(minutes)}분`;
+  if (minutes < 1440) return `${(minutes / 60).toFixed(1)}시간`;
+  return `${(minutes / 1440).toFixed(1)}일`;
+}
+
+interface GpuOverrunBannerProps {
+  cluster?: string;
+}
+
+export const GpuOverrunBanner = ({ cluster = 'innogrid-aikube' }: GpuOverrunBannerProps) => {
+  const { reservations } = useGetGpuReservations(cluster);
+  const extendMutation = useExtendGpuReservation();
 
   const alertItems = reservations
     .map((r) => ({
       ...r,
-      progress: Math.min(getProgress(r), 100),
+      progress: getProgress(r),
       elapsed: getElapsedMinutes(r),
-      isOverrun: getProgress(r) > 100,
+      _isOverrun: isOverrun(r),
       overrunCost: getOverrunCostKrw(r),
       currentCost: getCurrentCostKrw(r),
     }))
-    .filter(
-      (r) => getProgress({ ...r, estimatedMinutes: r.estimatedMinutes } as GpuReservation) >= 70
-    )
-    .sort((a, b) => (b.isOverrun ? 1 : 0) - (a.isOverrun ? 1 : 0));
+    .filter((r) => r.progress >= 70)
+    .sort((a, b) => (b._isOverrun ? 1 : 0) - (a._isOverrun ? 1 : 0));
 
   if (alertItems.length === 0) return null;
 
-  const overrunCount = alertItems.filter((r) => r.isOverrun).length;
+  const overrunCount = alertItems.filter((r) => r._isOverrun).length;
 
   return (
     <div className="rounded-lg border border-red-200 bg-red-50 p-4">
@@ -58,7 +73,7 @@ export const GpuOverrunBanner = () => {
       </div>
       <div className="space-y-3">
         {alertItems.map((r) => {
-          const barColor = r.isOverrun
+          const barColor = r._isOverrun
             ? 'bg-red-500'
             : r.progress >= 90
               ? 'bg-yellow-500'
@@ -74,13 +89,15 @@ export const GpuOverrunBanner = () => {
               <div className="mb-2 flex items-center justify-between text-xs text-[#525252]">
                 <span>
                   예약: {formatDuration(r.estimatedMinutes)} / 경과: {formatDuration(r.elapsed)}
-                  {r.isOverrun && (
+                  {r._isOverrun && (
                     <span className="ml-1 font-medium text-red-600">
                       (+{formatDuration(overrunMinutes)} 초과)
                     </span>
                   )}
                 </span>
-                <span className={r.isOverrun ? 'font-medium text-red-600' : ''}>{r.progress}%</span>
+                <span className={r._isOverrun ? 'font-medium text-red-600' : ''}>
+                  {r.progress}%
+                </span>
               </div>
               <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-[#e8e8e8]">
                 <div
@@ -93,22 +110,27 @@ export const GpuOverrunBanner = () => {
                   예상: {r.estimatedCostKrw.toLocaleString()}원 → 현재:{' '}
                   <span
                     className={
-                      r.isOverrun ? 'font-bold text-red-600' : 'font-medium text-[#1a1a1a]'
+                      r._isOverrun ? 'font-bold text-red-600' : 'font-medium text-[#1a1a1a]'
                     }
                   >
                     {r.currentCost.toLocaleString()}원
                   </span>
-                  {r.isOverrun && (
-                    <span className="ml-1 text-red-500">(+{r.overrunCost.toLocaleString()}원)</span>
+                  {r._isOverrun && (
+                    <span className="ml-1 text-red-500">
+                      (+{r.overrunCost.toLocaleString()}원)
+                    </span>
                   )}
                 </span>
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      extendReservation(r.releaseName, 1440);
-                      setReservations(getReservations());
-                    }}
+                    onClick={() =>
+                      extendMutation.mutate({
+                        releaseName: r.releaseName,
+                        cluster,
+                        minutes: 1440,
+                      })
+                    }
                     className="rounded border border-[#e8e8e8] px-5 py-2.5 text-xs text-[#525252] hover:bg-[#f5f5f5]"
                   >
                     24h 연장

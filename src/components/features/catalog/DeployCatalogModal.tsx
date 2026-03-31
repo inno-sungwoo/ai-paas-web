@@ -124,6 +124,7 @@ export const DeployCatalogModal = ({
         isConfirming={deployMutation.isPending}
         releaseName={releaseName}
         namespace={namespace}
+        clusterId={clusterId}
       />
     );
   }
