@@ -132,14 +132,14 @@ export const DeploymentEstimateModal = ({
               예상 사용 시간
               <span className="ml-1 font-normal text-[#999]">(초과 시 알림을 받습니다)</span>
             </label>
-            <div className="flex items-center gap-2">
-              <div className="flex flex-1 items-center">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
                 <input
                   type="number"
                   min={1}
                   value={timeValue}
                   onChange={(e) => setTimeValue(Math.max(1, Number(e.target.value) || 1))}
-                  className="w-full rounded-l border border-r-0 border-[#e8e8e8] px-3 py-2 text-sm"
+                  className="w-24 rounded-l border border-r-0 border-[#e8e8e8] px-3 py-2 text-sm"
                 />
                 <select
                   value={timeUnit}
@@ -151,13 +151,13 @@ export const DeploymentEstimateModal = ({
                   <option value="day">일</option>
                 </select>
               </div>
-              <div className="flex shrink-0 gap-1">
+              <div className="flex flex-wrap gap-1.5">
                 {presets.map((p) => (
                   <button
                     key={p.label}
                     type="button"
                     onClick={() => handlePreset(p.addMinutes)}
-                    className="rounded border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs text-blue-600 hover:bg-blue-100"
+                    className="rounded border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs text-blue-600 hover:bg-blue-100"
                   >
                     {p.label}
                   </button>
@@ -165,7 +165,7 @@ export const DeploymentEstimateModal = ({
                 <button
                   type="button"
                   onClick={handleReset}
-                  className="rounded border border-[#e8e8e8] px-2.5 py-1.5 text-xs text-[#999] hover:bg-[#f5f5f5]"
+                  className="rounded border border-[#e8e8e8] px-3.5 py-2 text-xs text-[#999] hover:bg-[#f5f5f5]"
                 >
                   초기화
                 </button>
