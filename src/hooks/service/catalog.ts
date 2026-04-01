@@ -100,11 +100,15 @@ export const useDeployChart = () => {
 export const useGetReleases = (clusterId: string, namespace?: string) => {
   const { data, isPending, isError } = useQuery({
     queryKey: ['charts', 'releases', clusterId, namespace],
-    queryFn: () => {
+    queryFn: async () => {
       const searchParams: Record<string, string> = { clusterId };
       if (namespace) searchParams.namespace = namespace;
-      return api.get<ReleaseInfo[]>('charts/releases', { searchParams }).json();
+      const res = await api.get('charts/releases', { searchParams }).json<any>();
+      // ResultResponse 래퍼: { status, data: { success, releases } }
+      const releases = res?.data?.releases ?? res?.releases ?? res ?? [];
+      return releases as ReleaseInfo[];
     },
+    refetchInterval: 10000,
     enabled: !!clusterId,
   });
   return { releases: data ?? [], isPending, isError };

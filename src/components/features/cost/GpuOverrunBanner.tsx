@@ -27,6 +27,7 @@ function getCurrentCostKrw(r: GpuReservationDto): number {
 }
 
 function formatDuration(minutes: number): string {
+  if (minutes < 10) return `${minutes.toFixed(1)}분`;
   if (minutes < 60) return `${Math.round(minutes)}분`;
   if (minutes < 1440) return `${(minutes / 60).toFixed(1)}시간`;
   return `${(minutes / 1440).toFixed(1)}일`;

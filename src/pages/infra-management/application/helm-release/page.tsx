@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { BreadCrumb, Select, type SelectSingleValue } from '@innogrid/ui';
-import { useGetMonitoringReleases } from '@/hooks/service/monitoring';
+import { useGetReleases } from '@/hooks/service/catalog';
 import { HelmReleaseTable } from '@/components/features/monitoring/HelmReleaseTable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { ReleaseStatus } from '@/types/monitoring';
+import type { ReleaseInfo } from '@/types/monitoring';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { useToast } from '@/components/ui/toast';
 
@@ -15,7 +15,7 @@ const clusterOptions = [{ text: 'innogrid-aikube', value: 'innogrid-aikube' }];
 export default function ApplicationHelmReleasePage() {
   const [selectedValue, setSelectedValue] = useState<OptionType>(clusterOptions[0]);
   const cluster = selectedValue?.value ?? 'innogrid-aikube';
-  const { releases, isPending } = useGetMonitoringReleases(cluster);
+  const { releases, isPending } = useGetReleases(cluster);
   const [nsFilter, setNsFilter] = useState<OptionType | null>(null);
   const queryClient = useQueryClient();
 
@@ -23,11 +23,11 @@ export default function ApplicationHelmReleasePage() {
   const [hiddenNames, setHiddenNames] = useState<Set<string>>(new Set());
   const [deletingNames, setDeletingNames] = useState<Set<string>>(new Set());
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [confirmTarget, setConfirmTarget] = useState<ReleaseStatus | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<ReleaseInfo | null>(null);
   const { addToast } = useToast();
 
   const deleteMutation = useMutation({
-    mutationFn: (release: ReleaseStatus) =>
+    mutationFn: (release: ReleaseInfo) =>
       api
         .delete(`charts/releases/${release.name}`, {
           searchParams: { clusterId: cluster, namespace: release.namespace },
@@ -46,15 +46,15 @@ export default function ApplicationHelmReleasePage() {
         return n;
       });
       setHiddenNames((prev) => new Set(prev).add(release.name));
-      // 60초 후 숨김 해제 (Prometheus 동기화 완료 시점)
+      // 10초 후 숨김 해제 (helm list는 실시간 반영)
       setTimeout(() => {
         setHiddenNames((prev) => {
           const n = new Set(prev);
           n.delete(release.name);
           return n;
         });
-        queryClient.invalidateQueries({ queryKey: ['monitoring'] });
-      }, 60000);
+        queryClient.invalidateQueries({ queryKey: ['charts', 'releases'] });
+      }, 10000);
     },
     onError: (_err, release) => {
       setDeletingNames((prev) => {
@@ -67,6 +67,7 @@ export default function ApplicationHelmReleasePage() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['charts'] });
+      queryClient.invalidateQueries({ queryKey: ['monitoring'] });
       queryClient.invalidateQueries({ queryKey: ['cost'] });
     },
   });
@@ -75,7 +76,7 @@ export default function ApplicationHelmReleasePage() {
     if (option) setSelectedValue(option);
   };
 
-  const handleDelete = (release: ReleaseStatus) => {
+  const handleDelete = (release: ReleaseInfo) => {
     if (deletingNames.has(release.name)) return;
     setConfirmTarget(release);
   };

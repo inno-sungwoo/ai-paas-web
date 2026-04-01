@@ -111,7 +111,7 @@ export interface ReleaseInfo {
   namespace: string;
   chart: string;
   chartVersion: string;
-  revision: string;
+  revision?: string;
   status: string;
   updated: string;
 }

@@ -1,44 +1,42 @@
 import { Table, Badge, useTablePagination } from '@innogrid/ui';
-import type { ReleaseStatus } from '@/types/monitoring';
+import type { ReleaseInfo } from '@/types/monitoring';
 
 interface HelmReleaseTableProps {
-  releases: ReleaseStatus[];
+  releases: ReleaseInfo[];
   isPending: boolean;
-  onDelete?: (release: ReleaseStatus) => void;
+  onDelete?: (release: ReleaseInfo) => void;
   deletingNames?: Set<string>;
 }
 
 const baseColumns = [
-  { id: 'name', header: '릴리즈', accessorFn: (row: ReleaseStatus) => row.name, size: 250 },
+  { id: 'name', header: '릴리즈', accessorFn: (row: ReleaseInfo) => row.name, size: 250 },
   {
     id: 'namespace',
     header: '네임스페이스',
-    accessorFn: (row: ReleaseStatus) => row.namespace,
+    accessorFn: (row: ReleaseInfo) => row.namespace,
     size: 160,
   },
-  { id: 'status', header: '상태', accessorFn: (row: ReleaseStatus) => row.status, size: 90 },
-  { id: 'chart', header: '차트', accessorFn: (row: ReleaseStatus) => row.chart, size: 200 },
+  { id: 'status', header: '상태', accessorFn: (row: ReleaseInfo) => row.status, size: 90 },
+  { id: 'chart', header: '차트', accessorFn: (row: ReleaseInfo) => row.chart, size: 200 },
   {
     id: 'chartVersion',
     header: '버전',
-    accessorFn: (row: ReleaseStatus) => row.chartVersion,
+    accessorFn: (row: ReleaseInfo) => row.chartVersion,
     size: 100,
   },
   {
     id: 'updated',
     header: '업데이트',
-    accessorFn: (row: ReleaseStatus) => row.updated,
+    accessorFn: (row: ReleaseInfo) => row.updated,
     size: 170,
   },
   {
     id: 'gpu',
     header: 'GPU',
-    accessorFn: (row: ReleaseStatus) => (row.gpuUtil != null ? 'used' : 'none'),
+    accessorFn: (row: ReleaseInfo) => row.chart,
     size: 80,
-    cell: ({ row }: { row: { original: ReleaseStatus } }) => {
+    cell: ({ row }: { row: { original: ReleaseInfo } }) => {
       const r = row.original;
-      // GPU를 실제로 요청한 차트만 "사용 중" 표시
-      // gpu-jupyter, ollama-server 등 GPU 차트인지 확인
       const isGpuChart =
         r.chart &&
         (r.chart.includes('gpu') ||
@@ -94,7 +92,7 @@ export const HelmReleaseTable = ({
           header: '삭제',
           size: 70,
           enableSorting: false,
-          cell: ({ row }: { row: { original: ReleaseStatus } }) => {
+          cell: ({ row }: { row: { original: ReleaseInfo } }) => {
             const isDeleting = deletingNames?.has(row.original.name);
             if (isDeleting) {
               return (
