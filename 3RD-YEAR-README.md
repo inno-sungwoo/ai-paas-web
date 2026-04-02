@@ -9,7 +9,7 @@
 
 ## 1. 개요
 
-3차년도 과제의 프론트엔드 구현. 모니터링 대시보드 실데이터 연동, 비용 관리 UI, 보안 검사/자동 수정 팝업, 감사 로그, GPU 예약제 등을 개발했다.
+3차년도 과제의 프론트엔드를 구현하였습니다. 모니터링 대시보드 실데이터 연동, 비용 관리 UI, 보안 검사/자동 수정 팝업, 감사 로그, GPU 예약제 등을 개발하였습니다.
 
 ## 2. 실행 방법
 
@@ -37,7 +37,7 @@ pnpm dev
 VITE_SERVER_URL=http://localhost:8888
 ```
 
-백엔드 URL을 변경할 경우 이 값을 수정한다.
+백엔드 URL을 변경할 경우 이 값을 수정하세요.
 
 ---
 
@@ -115,7 +115,7 @@ VITE_SERVER_URL=http://localhost:8888
 
 ## 7. 사이드바 메뉴 변경
 
-`components/layout/menu.tsx`에서 인프라 관리 하위 메뉴를 추가했다:
+`components/layout/menu.tsx`에서 인프라 관리 하위 메뉴를 추가하였습니다:
 
 ```
 인프라 관리
@@ -147,9 +147,9 @@ VITE_SERVER_URL=http://localhost:8888
 
 ## 9. 알려진 이슈
 
-- **클러스터 드롭다운**: `innogrid-aikube` 단일 클러스터만 표시 (하드코딩 아님, DB에 1개만 등록)
-- **CPU/Memory 게이지 0%**: Docker Desktop에서 kube_pod_container_resource_requests 메트릭 미수집 (실 서버 정상)
-- **bitnami 카탈로그 느림**: bitnami 저장소 차트 수가 많아 첫 로딩 시 지연
+- **클러스터 드롭다운**: `innogrid-aikube` 단일 클러스터만 표시됩니다 (하드코딩이 아니며, DB에 1개만 등록되어 있습니다)
+- **CPU/Memory 게이지 0%**: Docker Desktop에서 kube_pod_container_resource_requests 메트릭이 수집되지 않습니다 (실 서버에서는 정상 동작합니다)
+- **bitnami 카탈로그 느림**: bitnami 저장소 차트 수가 많아 첫 로딩 시 지연이 발생합니다
 
 ---
 
@@ -160,4 +160,4 @@ VITE_SERVER_URL=http://localhost:8888
 | 아이디 | `admin` (아무 값 가능) |
 | 비밀번호 | `1234` (아무 값 가능) |
 
-> 현재 인증은 개발용 Mock 처리. 실 운영 시 백엔드 AuthController 연동 필요.
+> 현재 인증은 개발용 Mock으로 처리되어 있습니다. 실 운영 시 백엔드 AuthController 연동이 필요합니다.
