@@ -39,6 +39,12 @@ export default function ApplicationHelmReleasePage() {
     },
     onSuccess: (_data, release) => {
       addToast('success', `"${release.name}" 릴리즈가 삭제되었습니다.`);
+      // GPU 예약도 함께 삭제
+      api
+        .delete(`cost/reservations/${release.name}`, {
+          searchParams: { cluster },
+        })
+        .catch(() => {});
       // 삭제 중 해제 + 숨김 목록에 추가
       setDeletingNames((prev) => {
         const n = new Set(prev);

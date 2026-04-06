@@ -13,9 +13,19 @@ interface GpuCard {
   vramUsedMb: number;
   vramTotalMb: number;
   fanSpeed: number;
+  // fallback 필드 (nvidia_smi 없을 때)
+  allocatedGpu?: number;
+  namespace?: string;
+  pod?: string;
+  node?: string;
 }
 
-const columns = [
+// nvidia_smi 메트릭이 있는지 판별
+function hasNvidiaSmi(data: GpuCard[]): boolean {
+  return data.some((g) => g.driverVersion && g.driverVersion !== '-');
+}
+
+const fullColumns = [
   {
     id: 'name',
     header: 'GPU 모델',
@@ -70,6 +80,40 @@ const columns = [
   },
 ];
 
+const fallbackColumns = [
+  {
+    id: 'pod',
+    header: 'Pod',
+    accessorFn: (row: GpuCard) => row.pod ?? '-',
+    size: 280,
+  },
+  {
+    id: 'namespace',
+    header: '네임스페이스',
+    accessorFn: (row: GpuCard) => row.namespace ?? '-',
+    size: 150,
+  },
+  {
+    id: 'node',
+    header: '노드',
+    accessorFn: (row: GpuCard) => row.node ?? '-',
+    size: 200,
+  },
+  {
+    id: 'allocatedGpu',
+    header: '할당 GPU',
+    accessorFn: (row: GpuCard) => `${row.allocatedGpu ?? 0}개`,
+    size: 100,
+  },
+  {
+    id: 'name',
+    header: '상태',
+    accessorFn: () => '할당됨',
+    size: 100,
+    cell: () => <span className="text-green-600 font-semibold">할당됨</span>,
+  },
+];
+
 interface GpuStatusTableProps {
   cluster: string;
 }
@@ -94,19 +138,31 @@ export const GpuStatusTable = ({ cluster }: GpuStatusTableProps) => {
 
   if (gpuCards.length === 0) {
     return (
-      <div className="flex items-center justify-center py-8 text-sm text-[#999]">
-        GPU 데이터가 없습니다.
+      <div className="flex flex-col items-center justify-center gap-2 py-8 text-sm text-[#999]">
+        <span>GPU가 감지되지 않습니다.</span>
+        <span className="text-xs">
+          클러스터에 NVIDIA GPU가 장착된 노드가 없거나, GPU Operator가 설치되지 않았습니다.
+        </span>
       </div>
     );
   }
 
+  const columns = hasNvidiaSmi(gpuCards) ? fullColumns : fallbackColumns;
+
   return (
-    <Table
-      columns={columns}
-      data={gpuCards}
-      totalCount={gpuCards.length}
-      pagination={pagination}
-      setPagination={setPagination}
-    />
+    <>
+      {!hasNvidiaSmi(gpuCards) && (
+        <div className="mb-2 rounded-md bg-yellow-50 px-3 py-2 text-xs text-yellow-700">
+          nvidia-smi exporter 미설치 — GPU 할당 정보만 표시됩니다.
+        </div>
+      )}
+      <Table
+        columns={columns}
+        data={gpuCards}
+        totalCount={gpuCards.length}
+        pagination={pagination}
+        setPagination={setPagination}
+      />
+    </>
   );
 };

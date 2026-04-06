@@ -4,9 +4,10 @@ import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-yaml';
 import 'prismjs/themes/prism.css';
 import { useGetChartValues, useDeployChart } from '@/hooks/service/catalog';
+import { useCreateGpuReservation } from '@/hooks/service/cost';
 import { checkYamlSecurity, autoFixYaml } from '@/util/checkYamlSecurity';
 import { SecurityCheckPopup } from './SecurityCheckPopup';
-import { DeploymentEstimateModal } from '../cost/DeploymentEstimateModal';
+import { DeploymentEstimateModal, type ReservationParams } from '../cost/DeploymentEstimateModal';
 import { useToast } from '@/components/ui/toast';
 
 interface DeployCatalogModalProps {
@@ -26,7 +27,11 @@ export const DeployCatalogModal = ({
   onClose,
   onSuccess,
 }: DeployCatalogModalProps) => {
-  const [releaseName, setReleaseName] = useState('');
+  const generateReleaseName = () => {
+    const ts = Date.now().toString(36);
+    return `${chartName}-${ts}`;
+  };
+  const [releaseName, setReleaseName] = useState(generateReleaseName);
   const [namespace, setNamespace] = useState('ai-pass3');
   const [clusterId, setClusterId] = useState('innogrid-aikube');
   const [version] = useState(chartVersion);
@@ -38,19 +43,29 @@ export const DeployCatalogModal = ({
   const [valuesContent, setValuesContent] = useState('');
   const [valuesLoaded, setValuesLoaded] = useState(false);
 
+  // DNS 설정 없이 접속 가능하도록 nip.io 사용 (나중에 내부 DNS 설정 후 'aipaas'로 변경)
+  const INGRESS_DOMAIN = '192.168.201.171.nip.io';
+
   if (chartValues?.valuesContent && !valuesLoaded) {
     // helm show values 결과에 WARNING 라인이 포함될 수 있으므로 제거
-    const cleanValues = chartValues.valuesContent
+    let cleanValues = chartValues.valuesContent
       .split('\n')
       .filter((line) => !line.startsWith('WARNING:') && !line.startsWith('Repository '))
       .join('\n')
       .trimStart();
+    // ingress host를 자동 설정 ({릴리즈이름}.aipaas)
+    cleanValues = cleanValues.replace(
+      /^(\s*#?\s*host:\s*).*$/m,
+      `  host: ${releaseName}.${INGRESS_DOMAIN}`
+    );
     setValuesContent(cleanValues);
     setValuesLoaded(true);
   }
 
   const deployMutation = useDeployChart();
+  const createReservation = useCreateGpuReservation();
   const securityWarnings = step !== 'form' ? checkYamlSecurity(valuesContent) : [];
+  const [pendingReservation, setPendingReservation] = useState<ReservationParams | undefined>();
 
   const handleDeploy = () => {
     const warnings = checkYamlSecurity(valuesContent);
@@ -63,23 +78,30 @@ export const DeployCatalogModal = ({
 
   const [deployError, setDeployError] = useState('');
 
-  const handleConfirmDeploy = () => {
+  const handleConfirmDeploy = (reservationParams?: ReservationParams) => {
     setDeployError('');
+    setPendingReservation(reservationParams);
     deployMutation.mutate(
       { repoName, chartName, releaseName, clusterId, namespace, version, valuesContent },
       {
         onSuccess: () => {
+          // 배포 성공 후에만 GPU 예약 생성
+          if (reservationParams) {
+            createReservation.mutate(reservationParams);
+          }
           addToast('success', `"${releaseName}" 배포가 시작되었습니다.`);
           onSuccess();
           onClose();
         },
         onError: async (error: any) => {
+          // 배포 실패 → reservation은 생성하지 않음 (고아 예약 방지)
           try {
             const body = await error.response?.json?.();
             const msg = body?.message || '';
             if (msg.includes('already exists')) {
+              setReleaseName(generateReleaseName());
               setDeployError(
-                `릴리즈 이름 "${releaseName}"이(가) 이미 존재합니다. 다른 이름을 사용하세요.`
+                `릴리즈 이름 "${releaseName}"이(가) 이미 존재합니다. 새 이름이 자동 생성되었습니다.`
               );
             } else if (msg.includes('Quota') || msg.includes('exceeded')) {
               setDeployError('GPU Quota를 초과했습니다. GPU가 반납되면 다시 시도하세요.');
@@ -136,13 +158,35 @@ export const DeployCatalogModal = ({
         <div className="mb-4 space-y-3">
           <div>
             <label className="mb-1 block text-xs text-[#525252]">릴리즈 이름</label>
-            <input
-              type="text"
-              value={releaseName}
-              onChange={(e) => setReleaseName(e.target.value)}
-              placeholder="my-release"
-              className="w-full rounded border border-[#e8e8e8] px-3 py-2 text-sm"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={releaseName}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  setReleaseName(name);
+                  setValuesContent((v) =>
+                    v.replace(/^(\s*host:\s*).*$/m, `  host: ${name}.${INGRESS_DOMAIN}`)
+                  );
+                }}
+                placeholder="my-release"
+                className="flex-1 rounded border border-[#e8e8e8] px-3 py-2 text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const name = generateReleaseName();
+                  setReleaseName(name);
+                  setValuesContent((v) =>
+                    v.replace(/^(\s*host:\s*).*$/m, `  host: ${name}.${INGRESS_DOMAIN}`)
+                  );
+                }}
+                className="shrink-0 rounded border border-[#e8e8e8] px-3 py-2 text-xs text-[#525252] hover:bg-[#f5f5f5]"
+                title="새 이름 생성"
+              >
+                자동 생성
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>

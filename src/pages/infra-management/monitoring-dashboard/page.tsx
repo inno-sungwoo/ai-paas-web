@@ -1,3 +1,4 @@
+// monitoring-dashboard page
 import { useState } from 'react';
 import {
   BreadCrumb,
@@ -15,6 +16,8 @@ import {
   useGetMonitoringReleases,
   useGetMonitoringAlerts,
   useGetNodeResourceUsage,
+  useGetPerformanceMetrics,
+  useGetPodsByNamespace,
 } from '@/hooks/service/monitoring';
 import { HelmReleaseTable } from '@/components/features/monitoring/HelmReleaseTable';
 import { GpuStatusTable } from '@/components/features/monitoring/GpuStatusTable';
@@ -24,49 +27,28 @@ type OptionType = { text: string; value: string };
 
 const clusterOptions = [{ text: 'innogrid-aikube', value: 'innogrid-aikube' }];
 
-interface PodRow {
-  name: string;
-  workflow: string;
-  type: string;
-  desc: string;
-  date: string;
+interface PodNsRow {
+  namespace: string;
+  count: number;
 }
 
-const columns = [
+const podColumns = [
   {
-    id: 'name',
-    header: '이름',
-    accessorFn: (row: PodRow) => row.name,
-    size: 300,
+    id: 'namespace',
+    header: '네임스페이스',
+    accessorFn: (row: PodNsRow) => row.namespace,
+    size: 400,
   },
   {
-    id: 'workflow',
-    header: '워크플로우',
-    accessorFn: (row: PodRow) => row.workflow,
-    size: 300,
-  },
-  {
-    id: 'type',
-    header: '유형',
-    accessorFn: (row: PodRow) => row.type,
-    size: 285,
-  },
-  {
-    id: 'desc',
-    header: '설명',
-    accessorFn: (row: PodRow) => row.desc,
-    size: 334,
-    enableSorting: false,
-  },
-  {
-    id: 'date',
-    header: '생성일시',
-    accessorFn: (row: PodRow) => row.date,
-    size: 325,
+    id: 'count',
+    header: 'Pod 수',
+    accessorFn: (row: PodNsRow) => row.count,
+    size: 200,
+    cell: ({ row }: { row: { original: PodNsRow } }) => (
+      <span className="font-semibold">{row.original.count}</span>
+    ),
   },
 ];
-
-const rowData: PodRow[] = [];
 
 export default function MonitoringPage() {
   const { pagination, setPagination } = useTablePagination();
@@ -77,6 +59,8 @@ export default function MonitoringPage() {
   const { releases, isPending: releasesLoading } = useGetMonitoringReleases(cluster);
   const { alerts } = useGetMonitoringAlerts(cluster);
   const { nodeResource } = useGetNodeResourceUsage(cluster);
+  const { performance } = useGetPerformanceMetrics(cluster);
+  const { pods: podData } = useGetPodsByNamespace(cluster);
 
   const cpuUtil = nodeResource?.cpuUtil ?? 0;
   const memUtil = nodeResource?.memoryUtil ?? 0;
@@ -308,13 +292,13 @@ export default function MonitoringPage() {
             <div className="page-detail-round-data">
               <div className={styles.symbolBox}>
                 <IconHexagon />
-                <em>38</em>
+                <em>{podData.reduce((sum, p) => sum + p.count, 0)}</em>
               </div>
               <div className="page-h-240">
                 <Table
-                  columns={columns}
-                  data={rowData}
-                  totalCount={rowData.length}
+                  columns={podColumns}
+                  data={podData}
+                  totalCount={podData.length}
                   pagination={pagination}
                   setPagination={setPagination}
                 />
@@ -322,77 +306,45 @@ export default function MonitoringPage() {
             </div>
           </div>
           <div className="page-detail-round-box page-flex-1">
-            <div className="page-detail-round-name">성능 지표</div>
+            <div className="page-detail-round-name">성능 지표 (최근 1시간)</div>
             <div className="page-detail-round-data">
               <div className="page-content-detail-row2">
                 <div className="page-detail-round-box page-detail-round-color page-flex-1 page-mt-0">
-                  <div className="page-detail-round-name">CPU</div>
+                  <div className="page-detail-round-name">CPU 사용량 (코어)</div>
                   <div className="page-detail-round-data page-h-548 page-p-24">
-                    <LineChart
-                      xDataKey="name"
-                      yDataKey={['workflow1']}
-                      data={[
-                        {
-                          name: '2022.04.12',
-                          workflow1: 120,
-                        },
-                        {
-                          name: '24',
-                          workflow1: 162,
-                        },
-                        {
-                          name: '25',
-                          workflow1: 118,
-                        },
-                        {
-                          name: '26',
-                          workflow1: 131,
-                        },
-                        {
-                          name: '27',
-                          workflow1: 85,
-                        },
-                        {
-                          name: '2022.04.28',
-                          workflow1: 81,
-                        },
-                      ]}
-                    />
+                    {performance?.cpuUsage && performance.cpuUsage.length > 0 ? (
+                      <LineChart
+                        xDataKey="name"
+                        yDataKey={['value']}
+                        data={performance.cpuUsage.map((p) => ({
+                          name: p.time,
+                          value: p.value,
+                        }))}
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-[#999]">
+                        데이터 수집 중...
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="page-detail-round-box page-detail-round-color page-flex-1 page-mt-0">
-                  <div className="page-detail-round-name">CPU load average</div>
+                  <div className="page-detail-round-name">CPU Load Average (5m)</div>
                   <div className="page-detail-round-data page-h-548 page-p-24">
-                    <LineChart
-                      xDataKey="name"
-                      yDataKey={['workflow1']}
-                      data={[
-                        {
-                          name: '2022.04.12',
-                          workflow1: 120,
-                        },
-                        {
-                          name: '24',
-                          workflow1: 162,
-                        },
-                        {
-                          name: '25',
-                          workflow1: 118,
-                        },
-                        {
-                          name: '26',
-                          workflow1: 131,
-                        },
-                        {
-                          name: '27',
-                          workflow1: 85,
-                        },
-                        {
-                          name: '2022.04.28',
-                          workflow1: 81,
-                        },
-                      ]}
-                    />
+                    {performance?.cpuLoad && performance.cpuLoad.length > 0 ? (
+                      <LineChart
+                        xDataKey="name"
+                        yDataKey={['value']}
+                        data={performance.cpuLoad.map((p) => ({
+                          name: p.time,
+                          value: p.value,
+                        }))}
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-sm text-[#999]">
+                        데이터 수집 중...
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

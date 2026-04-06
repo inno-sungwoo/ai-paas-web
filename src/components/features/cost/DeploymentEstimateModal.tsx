@@ -1,11 +1,21 @@
 import { useState } from 'react';
-import { useGetCostEstimate, useCreateGpuReservation } from '@/hooks/service/cost';
+import { useGetCostEstimate } from '@/hooks/service/cost';
 
 type TimeUnit = 'min' | 'hour' | 'day';
 
+export interface ReservationParams {
+  releaseName: string;
+  namespace: string;
+  clusterId: string;
+  gpuCount: number;
+  estimatedMinutes: number;
+  unitPriceKrw: number;
+  estimatedCostKrw: number;
+}
+
 interface DeploymentEstimateModalProps {
   onClose: () => void;
-  onConfirm?: () => void;
+  onConfirm?: (reservationParams?: ReservationParams) => void;
   confirmLabel?: string;
   isConfirming?: boolean;
   releaseName?: string;
@@ -35,7 +45,6 @@ export const DeploymentEstimateModal = ({
   clusterId = 'innogrid-aikube',
 }: DeploymentEstimateModalProps) => {
   const [gpuCount, setGpuCount] = useState(1);
-  const createReservation = useCreateGpuReservation();
   const [timeValue, setTimeValue] = useState(24);
   const [timeUnit, setTimeUnit] = useState<TimeUnit>('hour');
 
@@ -46,19 +55,23 @@ export const DeploymentEstimateModal = ({
   const totalCost = Math.round(gpuCount * hours * unitPrice);
   const costEstimate = baseEstimate ? { unitPriceKrw: unitPrice, totalCostKrw: totalCost } : null;
 
+  const getReservationParams = () => {
+    if (!releaseName || !costEstimate) return null;
+    return {
+      releaseName,
+      namespace: namespace ?? 'default',
+      clusterId,
+      gpuCount,
+      estimatedMinutes: toMinutes(timeValue, timeUnit),
+      unitPriceKrw: costEstimate.unitPriceKrw,
+      estimatedCostKrw: costEstimate.totalCostKrw,
+    };
+  };
+
   const handleConfirm = () => {
-    if (releaseName && costEstimate) {
-      createReservation.mutate({
-        releaseName,
-        namespace: namespace ?? 'default',
-        clusterId,
-        gpuCount,
-        estimatedMinutes: toMinutes(timeValue, timeUnit),
-        unitPriceKrw: costEstimate.unitPriceKrw,
-        estimatedCostKrw: costEstimate.totalCostKrw,
-      });
-    }
-    onConfirm?.();
+    // deploy를 먼저 실행하고, 성공 시에만 reservation 생성
+    // reservationParams를 onConfirm에 전달하여 deploy 성공 후 사용
+    onConfirm?.(getReservationParams() ?? undefined);
   };
 
   const presets: { label: string; addMinutes: number }[] = [
