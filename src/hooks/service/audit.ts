@@ -6,7 +6,9 @@ export const useGetAuditEvents = (cluster: string, namespace: string) => {
   const { data, isPending, isError } = useQuery({
     queryKey: ['audit', 'events', cluster, namespace],
     queryFn: () =>
-      api.get<AuditEvent[]>('audit/events', { searchParams: { cluster, namespace } }).json(),
+      api
+        .get<AuditEvent[]>('audit/events', { searchParams: { clusterName: cluster, namespace } })
+        .json(),
     enabled: !!cluster,
     refetchInterval: 30000,
   });

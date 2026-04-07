@@ -145,15 +145,111 @@ VITE_SERVER_URL=http://localhost:8888
 
 ---
 
-## 9. 알려진 이슈
+## 9. 모니터링 대시보드 데이터 출처
 
-- **클러스터 드롭다운**: `innogrid-aikube` 단일 클러스터만 표시됩니다 (하드코딩이 아니며, DB에 1개만 등록되어 있습니다)
-- **CPU/Memory 게이지 0%**: Docker Desktop에서 kube_pod_container_resource_requests 메트릭이 수집되지 않습니다 (실 서버에서는 정상 동작합니다)
+모든 카드/게이지/차트는 Prometheus(`cluster.monit_server_url`) 실 관측값을 직접 조회합니다. mock/하드코딩 폴백은 모두 제거되었습니다.
+
+### 9-1. 실 관측값 (kube-state-metrics + node-exporter + helm-exporter)
+
+| 지표 | PromQL / 출처 | 비고 |
+|---|---|---|
+| CPU 사용률 게이지 | `cpu/usage` ÷ `cpu/total` (resourceMonit API) | 노드 실측 |
+| Memory 사용률 게이지 | `memory/usage` ÷ `memory/total` | 노드 실측 |
+| Filesystem 사용률 게이지 | `filesystem/usage` ÷ `filesystem/total` | 노드 실측 |
+| Pod 수 / 용량 | `kubelet_running_pods` 합산, 노드 capacity 합 | 실시간 |
+| CPU usage / load 시계열 | `query_range`, 1시간 윈도우 | 성능 지표 차트 |
+| 네임스페이스별 Pod 수 | `pod/usage_namespace` query | 표 |
+| 헬름 릴리즈 수 | `count(helm_chart_info{description!~".*failed.*"})` | helm-exporter 필요 |
+| 활성 알림 수 | `count(ALERTS{alertstate="firing"})` | Prometheus AlertManager |
+| GPU 보유 수 | `count(DCGM_FI_DEV_GPU_UTIL)` → `count(nvidia_smi_gpu_info)` → `sum(kube_node_status_capacity{resource="nvidia_com_gpu"})` 폴백 체인 | DCGM/nvidia_smi 미설치 시 kube-state-metrics 기준 |
+| GPU 활용률 (avgGpuUtil) | `avg(DCGM_FI_DEV_GPU_UTIL)` → `avg(nvidia_smi_utilization_gpu_ratio)*100` → `clamp_max((sum(kube_pod_container_resource_requests{resource="nvidia_com_gpu"}) / sum(kube_node_status_capacity{...})) * 100, 100)` 폴백 체인 | exporter 미설치 시 **할당률**로 대체 표시 |
+
+### 9-2. GPU 현황 테이블
+
+- **DCGM/nvidia_smi exporter 설치 시**: GPU 모델, 활용률, 온도, 전력, VRAM, 팬 속도, 드라이버 버전 표시
+- **미설치 시 (할당 정보 모드)**: Pod, 네임스페이스, 노드, 할당 GPU, Pod Phase(Running/Pending/Failed) 표시
+  - 다중 kube-state-metrics 인스턴스로 인한 중복은 namespace+pod 키로 dedupe
+  - Prometheus stale 메트릭 필터링: fabric8 client로 실 pod 존재 여부 검증, 없는 pod는 결과에서 제외
+  - 누락된 노드 정보는 fabric8로 직접 조회하여 보강
+
+### 9-3. 비용 최적화 페이지
+
+| 지표 | 출처 |
+|---|---|
+| 일/월 비용 | `cost/summary` (네임스페이스별 GPU 요청량 × 단가) |
+| GPU 사용 (할당/보유) | `cost/summary.teams` 합 / `monitoring.gpuCount` |
+| 현재 활용률 | `monitoring.avgGpuUtil` (위 폴백 체인) |
+| 네임스페이스별 비용 차트 | `cost/summary.teams` |
+| 7일 사용 보고서 | `cost/report` (Prometheus query_range) |
+| 유휴/초과 배너 | `cost/idle-warnings`, `cost/reservations` (DB 기반 예약) |
+
+### 9-4. 클러스터 모니터링 상태 추적
+
+각 클러스터 row에 다음 컬럼이 추가되었습니다(`cluster` 테이블):
+
+| 컬럼 | 의미 |
+|---|---|
+| `monit_status` | `ACTIVE` / `UNREACHABLE` / `NOT_CONFIGURED` — 1분 주기 헬스체크로 갱신 |
+| `monit_last_check` | 마지막 헬스체크 시각 |
+| `monit_last_error` | 마지막 실패 사유 (UNREACHABLE/NOT_CONFIGURED일 때) |
+
+**자동 동작**
+- 백엔드 부팅 시 + 1분 주기로 `ClusterMonitHealthChecker`가 모든 클러스터의 `<monit_server_url>/-/healthy`를 호출
+- placeholder(`@@..@@`)나 빈/잘못된 URL은 즉시 `NOT_CONFIGURED` 마킹
+- `MonitServiceImpl.getMonitUrl()`는 `monit_status != ACTIVE`인 클러스터에 대한 PromQL 호출을 즉시 503으로 거부 → 백엔드 hang 방지
+- 모든 PromQL 호출에 5초 timeout + 1회 retry. 실패 시 빈 결과를 반환하여 다른 카드 응답에 영향 없음
+
+**프론트엔드 동작**
+- 클러스터 selector는 `useGetClusters` 응답의 `monitStatus`로 라벨에 상태를 표시 (`ai-platform-k8s (UNREACHABLE)`)
+- 첫 ACTIVE 클러스터를 자동 기본 선택
+- 비활성 클러스터를 선택하면 데이터 카드 영역 위에 노란 배너 표시 (사유 + URL 표시), 데이터 호출 자체는 차단
+- 운영자는 `GET /api/v1/system/cluster/{id}/diagnose`로 어떤 exporter가 빠졌는지 단일 응답으로 확인 가능
+
+**진단 응답 예시**
+```json
+{
+  "id": "ai-platform-k8s",
+  "monitStatus": "ACTIVE",
+  "checks": {
+    "promReachable": { "ok": true },
+    "kubeStateMetrics": { "ok": true, "value": 2 },
+    "nodeExporter": { "ok": true, "value": 8 },
+    "helmExporter": { "ok": true, "value": 14 },
+    "dcgmExporter": { "ok": false, "message": "no metrics found" }
+  },
+  "samples": { "cpuTotalCores": 208, "memoryTotalGiB": 312.8, "gpuCapacity": 2 }
+}
+```
+
+**유지보수 SQL**
+```sql
+-- placeholder/빈 URL을 가진 row 정리
+DELETE FROM cluster
+WHERE monit_server_url IS NULL
+   OR monit_server_url LIKE '%@@%'
+   OR monit_server_url = '';
+
+-- 현재 모니터링 상태 확인
+SELECT id, monit_server_url, monit_status, monit_last_check, monit_last_error FROM cluster;
+
+-- 즉시 헬스체크 트리거
+-- POST /api/v1/system/cluster/{id}/monit-health-check
+```
+
+### 9-5. 멀티클러스터 모니터링 주의사항
+
+- 백엔드는 `cluster.monit_server_url` 값으로 Prometheus를 호출합니다. **각 클러스터는 자체 Prometheus 엔드포인트를 가져야** selector 전환 시 실제로 다른 데이터가 표시됩니다.
+- 여러 클러스터 row가 동일한 `monit_server_url`을 가지면, 어떤 클러스터를 선택해도 같은 메트릭이 보입니다. (멀티클러스터 통합 Prometheus가 아닌 한 의도된 동작이 아님)
+- 점검: `SELECT id, monit_server_url FROM cluster;` 로 URL이 placeholder(`@@MONIT_SERVER_URL@@`) 또는 중복인지 확인하세요.
+
+## 10. 알려진 이슈
+
+- **클러스터 드롭다운**: kubeconfig/DB에 등록된 모든 클러스터를 동적으로 조회하여 표시합니다. 모니터링 대시보드, 이벤트, 비용 최적화, 감사 로그, 헬름 릴리즈, 카탈로그(배포 모달) 모두 사용자가 클러스터를 직접 선택할 수 있으며, 첫 클러스터가 기본 선택됩니다. 네임스페이스도 선택된 클러스터의 실제 네임스페이스를 동적으로 fetch합니다 (감사 로그는 "전체" 옵션 지원).
 - **bitnami 카탈로그 느림**: bitnami 저장소 차트 수가 많아 첫 로딩 시 지연이 발생합니다
 
 ---
 
-## 10. 로그인 정보
+## 11. 로그인 정보
 
 | 항목 | 값 |
 |------|-----|

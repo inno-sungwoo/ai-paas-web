@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BreadCrumb, Select, type SelectSingleValue } from '@innogrid/ui';
 import { useGetReleases } from '@/hooks/service/catalog';
+import { useGetClusters } from '@/hooks/service/clusters';
 import { HelmReleaseTable } from '@/components/features/monitoring/HelmReleaseTable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -10,11 +11,19 @@ import { useToast } from '@/components/ui/toast';
 
 type OptionType = { text: string; value: string };
 
-const clusterOptions = [{ text: 'innogrid-aikube', value: 'innogrid-aikube' }];
-
 export default function ApplicationHelmReleasePage() {
-  const [selectedValue, setSelectedValue] = useState<OptionType>(clusterOptions[0]);
-  const cluster = selectedValue?.value ?? 'innogrid-aikube';
+  const { clusters } = useGetClusters();
+  const clusterOptions = useMemo<OptionType[]>(
+    () => clusters.map((c) => ({ text: c.id, value: c.id })),
+    [clusters],
+  );
+  const [selectedValue, setSelectedValue] = useState<OptionType | null>(null);
+  useEffect(() => {
+    if (!selectedValue && clusterOptions.length > 0) {
+      setSelectedValue(clusterOptions[0]);
+    }
+  }, [clusterOptions, selectedValue]);
+  const cluster = selectedValue?.value ?? '';
   const { releases, isPending } = useGetReleases(cluster);
   const [nsFilter, setNsFilter] = useState<OptionType | null>(null);
   const queryClient = useQueryClient();
@@ -122,7 +131,7 @@ export default function ApplicationHelmReleasePage() {
             options={clusterOptions}
             getOptionLabel={(option) => option.text}
             getOptionValue={(option) => option.value}
-            value={selectedValue}
+            value={selectedValue ?? undefined}
             onChange={onChangeSelect}
           />
           <Select

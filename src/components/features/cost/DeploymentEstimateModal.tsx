@@ -42,7 +42,7 @@ export const DeploymentEstimateModal = ({
   isConfirming = false,
   releaseName,
   namespace,
-  clusterId = 'innogrid-aikube',
+  clusterId = '',
 }: DeploymentEstimateModalProps) => {
   const [gpuCount, setGpuCount] = useState(1);
   const [timeValue, setTimeValue] = useState(24);

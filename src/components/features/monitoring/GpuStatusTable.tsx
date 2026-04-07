@@ -18,6 +18,7 @@ interface GpuCard {
   namespace?: string;
   pod?: string;
   node?: string;
+  phase?: string;
 }
 
 // nvidia_smi 메트릭이 있는지 판별
@@ -96,7 +97,7 @@ const fallbackColumns = [
   {
     id: 'node',
     header: '노드',
-    accessorFn: (row: GpuCard) => row.node ?? '-',
+    accessorFn: (row: GpuCard) => (row.node && row.node.length > 0 ? row.node : '-'),
     size: 200,
   },
   {
@@ -106,11 +107,22 @@ const fallbackColumns = [
     size: 100,
   },
   {
-    id: 'name',
+    id: 'phase',
     header: '상태',
-    accessorFn: () => '할당됨',
+    accessorFn: (row: GpuCard) => row.phase ?? '-',
     size: 100,
-    cell: () => <span className="text-green-600 font-semibold">할당됨</span>,
+    cell: ({ row }: { row: { original: GpuCard } }) => {
+      const phase = row.original.phase ?? 'Unknown';
+      const cls =
+        phase === 'Running'
+          ? 'text-green-600 font-semibold'
+          : phase === 'Pending'
+            ? 'text-yellow-600 font-semibold'
+            : phase === 'Failed'
+              ? 'text-red-600 font-semibold'
+              : 'text-[#525252]';
+      return <span className={cls}>{phase}</span>;
+    },
   },
 ];
 

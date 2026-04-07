@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   BreadCrumb,
   Select,
@@ -6,19 +6,13 @@ import {
   useTablePagination,
   type SelectSingleValue,
 } from '@innogrid/ui';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 import { useGetAuditEvents } from '@/hooks/service/audit';
+import { useGetClusters } from '@/hooks/service/clusters';
 import type { AuditEvent } from '@/types/monitoring';
 
 type OptionType = { text: string; value: string };
-
-const namespaceOptions = [
-  { text: 'ai-pass3', value: 'ai-pass3' },
-  { text: 'ai-platform', value: 'ai-platform' },
-  { text: 'default', value: 'default' },
-  { text: 'kube-system', value: 'kube-system' },
-  { text: 'prometheus-system', value: 'prometheus-system' },
-  { text: 'drift-detect', value: 'drift-detect' },
-];
 
 const columns = [
   {
@@ -67,14 +61,52 @@ const columns = [
 
 export default function AuditLogPage() {
   const { pagination, setPagination } = useTablePagination();
-  const [selectedValue, setSelectedValue] = useState<OptionType>(namespaceOptions[0]);
+  const { clusters } = useGetClusters();
+  const clusterOptions = useMemo<OptionType[]>(
+    () => clusters.map((c) => ({ text: c.id, value: c.id })),
+    [clusters],
+  );
+  const [selectedCluster, setSelectedCluster] = useState<OptionType | null>(null);
+  const [selectedValue, setSelectedValue] = useState<OptionType | null>(null);
   const [sortNewest, setSortNewest] = useState(true);
 
-  const namespace = selectedValue?.value ?? 'ai-pass3';
-  const { events, isPending } = useGetAuditEvents('innogrid-aikube', namespace);
+  useEffect(() => {
+    if (!selectedCluster && clusterOptions.length > 0) {
+      setSelectedCluster(clusterOptions[0]);
+    }
+  }, [clusterOptions, selectedCluster]);
+
+  const cluster = selectedCluster?.value ?? '';
+  const { data: namespaces = [] } = useQuery({
+    queryKey: ['kubernetes', 'namespaces', cluster],
+    queryFn: () =>
+      api
+        .get<Array<{ metadata: { name: string } }>>('kubernetes/namespaces', {
+          searchParams: { clusterName: cluster },
+        })
+        .json(),
+    enabled: !!cluster,
+  });
+  const namespaceOptions = useMemo<OptionType[]>(
+    () => [
+      { text: '전체', value: '' },
+      ...namespaces.map((n) => ({ text: n.metadata.name, value: n.metadata.name })),
+    ],
+    [namespaces],
+  );
+  useEffect(() => {
+    if (!selectedValue && namespaceOptions.length > 0) {
+      setSelectedValue(namespaceOptions[0]);
+    }
+  }, [namespaceOptions, selectedValue]);
+  const namespace = selectedValue?.value ?? '';
+  const { events, isPending } = useGetAuditEvents(cluster, namespace);
 
   const onChangeSelect = (option: SelectSingleValue<OptionType>) => {
     if (option) setSelectedValue(option);
+  };
+  const onChangeCluster = (option: SelectSingleValue<OptionType>) => {
+    if (option) setSelectedCluster(option);
   };
 
   // 정렬 적용
@@ -95,6 +127,14 @@ export default function AuditLogPage() {
       </div>
       <div className="page-content">
         <div className="flex items-center gap-4">
+          <Select
+            className="page-input_item-data_select"
+            options={clusterOptions}
+            getOptionLabel={(option) => option.text}
+            getOptionValue={(option) => option.value}
+            value={selectedCluster}
+            onChange={onChangeCluster}
+          />
           <Select
             className="page-input_item-data_select"
             options={namespaceOptions}

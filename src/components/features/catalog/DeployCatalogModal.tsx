@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-yaml';
 import 'prismjs/themes/prism.css';
 import { useGetChartValues, useDeployChart } from '@/hooks/service/catalog';
+import { useGetClusters } from '@/hooks/service/clusters';
 import { useCreateGpuReservation } from '@/hooks/service/cost';
 import { checkYamlSecurity, autoFixYaml } from '@/util/checkYamlSecurity';
 import { SecurityCheckPopup } from './SecurityCheckPopup';
@@ -33,7 +34,13 @@ export const DeployCatalogModal = ({
   };
   const [releaseName, setReleaseName] = useState(generateReleaseName);
   const [namespace, setNamespace] = useState('ai-pass3');
-  const [clusterId, setClusterId] = useState('innogrid-aikube');
+  const [clusterId, setClusterId] = useState('');
+  const { clusters } = useGetClusters();
+  useEffect(() => {
+    if (!clusterId && clusters.length > 0) {
+      setClusterId(clusters[0].id);
+    }
+  }, [clusters, clusterId]);
   const [version] = useState(chartVersion);
   const [step, setStep] = useState<Step>('form');
   const { addToast } = useToast();
@@ -196,7 +203,11 @@ export const DeployCatalogModal = ({
                 onChange={(e) => setClusterId(e.target.value)}
                 className="w-full rounded border border-[#e8e8e8] px-3 py-2 text-sm"
               >
-                <option value="innogrid-aikube">innogrid-aikube</option>
+                {clusters.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.id}
+                  </option>
+                ))}
               </select>
             </div>
             <div>

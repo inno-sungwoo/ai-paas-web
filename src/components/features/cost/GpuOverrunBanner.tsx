@@ -34,10 +34,10 @@ function formatDuration(minutes: number): string {
 }
 
 interface GpuOverrunBannerProps {
-  cluster?: string;
+  cluster: string;
 }
 
-export const GpuOverrunBanner = ({ cluster = 'innogrid-aikube' }: GpuOverrunBannerProps) => {
+export const GpuOverrunBanner = ({ cluster }: GpuOverrunBannerProps) => {
   const { reservations } = useGetGpuReservations(cluster);
   const extendMutation = useExtendGpuReservation();
 

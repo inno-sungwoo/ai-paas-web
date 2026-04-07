@@ -1,22 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { IconEventOff, IconEventOn } from '@/assets/img/icon';
 import { BreadCrumb, Select, type SelectSingleValue } from '@innogrid/ui';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 import { useGetAuditEvents } from '@/hooks/service/audit';
+import { useGetClusters } from '@/hooks/service/clusters';
 import type { AuditEvent } from '@/types/monitoring';
 import styles from '../inframonitor.module.scss';
 
 type OptionType = { text: string; value: string };
 
-const clusterOptions = [{ text: 'innogrid-aikube', value: 'innogrid-aikube' }];
-
-const namespaceOptions: OptionType[] = [
-  { text: '전체', value: '' },
-  { text: 'ai-pass3', value: 'ai-pass3' },
-  { text: 'ai-platform', value: 'ai-platform' },
-  { text: 'default', value: 'default' },
-  { text: 'kube-system', value: 'kube-system' },
-  { text: 'prometheus-system', value: 'prometheus-system' },
-];
+const ALL_NAMESPACE_OPTION: OptionType = { text: '전체', value: '' };
 
 function formatTime(ts: string | null | undefined) {
   if (!ts) return '-';
@@ -61,14 +55,44 @@ function EventCard({ event }: { event: AuditEvent }) {
 }
 
 export default function EventPage() {
-  const [cluster, setCluster] = useState<OptionType>(clusterOptions[0]);
-  const [namespace, setNamespace] = useState<OptionType>(namespaceOptions[0]);
+  const { clusters } = useGetClusters();
+  const clusterOptions = useMemo<OptionType[]>(
+    () => clusters.map((c) => ({ text: c.id, value: c.id })),
+    [clusters],
+  );
+  const [cluster, setCluster] = useState<OptionType | null>(null);
+
+  useEffect(() => {
+    if (!cluster && clusterOptions.length > 0) {
+      setCluster(clusterOptions[0]);
+    }
+  }, [clusterOptions, cluster]);
+
+  const clusterName = cluster?.value ?? '';
+  const { data: namespaces = [] } = useQuery({
+    queryKey: ['kubernetes', 'namespaces', clusterName],
+    queryFn: () =>
+      api
+        .get<Array<{ metadata: { name: string } }>>('kubernetes/namespaces', {
+          searchParams: { clusterName },
+        })
+        .json(),
+    enabled: !!clusterName,
+  });
+  const namespaceOptions = useMemo<OptionType[]>(
+    () => [
+      ALL_NAMESPACE_OPTION,
+      ...namespaces.map((n) => ({ text: n.metadata.name, value: n.metadata.name })),
+    ],
+    [namespaces],
+  );
+  const [namespace, setNamespace] = useState<OptionType>(ALL_NAMESPACE_OPTION);
   const [streaming, setStreaming] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // 전체 선택 시 빈 문자열 → 백엔드가 전체 네임스페이스 이벤트 반환
   const selectedNs = namespace.value;
-  const { events, isPending } = useGetAuditEvents(cluster.value, selectedNs || '');
+  const { events, isPending } = useGetAuditEvents(cluster?.value ?? '', selectedNs || '');
 
   // 시간순 정렬 (최신 위)
   const sorted = [...events].sort((a, b) => {

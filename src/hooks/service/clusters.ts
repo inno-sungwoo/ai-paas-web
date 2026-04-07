@@ -24,7 +24,7 @@ export const useGetClusters = (params: GetClustersParams = {}) => {
   const { data, isPending, isError } = useQuery({
     queryKey: ['clusters', params],
     queryFn: () =>
-      api.get<Page<Cluster>>('any-cloud/system/clusters', { searchParams: { ...params } }).json(),
+      api.get<Page<Cluster>>('system/clusters', { searchParams: { ...params } }).json(),
   });
 
   return {

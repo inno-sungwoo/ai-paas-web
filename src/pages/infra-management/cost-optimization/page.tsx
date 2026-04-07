@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BreadCrumb, Select, type SelectSingleValue } from '@innogrid/ui';
 import { useGetCostSummary, useGetIdleWarnings, useGetCostReport } from '@/hooks/service/cost';
 import { useGetMonitoringSummary } from '@/hooks/service/monitoring';
+import { useGetClusters } from '@/hooks/service/clusters';
 import { IdleWarningBanner } from '@/components/features/cost/IdleWarningBanner';
 import { CostSummaryChart } from '@/components/features/cost/CostSummaryChart';
 import { UsageReportTable } from '@/components/features/cost/UsageReportTable';
@@ -11,13 +12,22 @@ import { SkeletonCard } from '@/components/ui/skeleton';
 
 type OptionType = { text: string; value: string };
 
-const clusterOptions = [{ text: 'innogrid-aikube', value: 'innogrid-aikube' }];
-
 export default function CostOptimizationPage() {
-  const [selectedValue, setSelectedValue] = useState<OptionType>(clusterOptions[0]);
+  const { clusters } = useGetClusters();
+  const clusterOptions = useMemo<OptionType[]>(
+    () => clusters.map((c) => ({ text: c.id, value: c.id })),
+    [clusters],
+  );
+  const [selectedValue, setSelectedValue] = useState<OptionType | null>(null);
   const [estimateOpen, setEstimateOpen] = useState(false);
 
-  const cluster = selectedValue?.value ?? 'innogrid-aikube';
+  useEffect(() => {
+    if (!selectedValue && clusterOptions.length > 0) {
+      setSelectedValue(clusterOptions[0]);
+    }
+  }, [clusterOptions, selectedValue]);
+
+  const cluster = selectedValue?.value ?? '';
   const { costSummary, isPending: summaryLoading } = useGetCostSummary(cluster);
   const { idleWarnings } = useGetIdleWarnings(cluster);
   const { costReport, isPending: reportLoading } = useGetCostReport(cluster);
@@ -31,7 +41,7 @@ export default function CostOptimizationPage() {
   const dailyCost = costSummary?.totalGpuCostKrw ?? 0;
   const monthlyCost = dailyCost * 30;
   const totalGpuRequested = costSummary?.teams.reduce((sum, t) => sum + t.gpuCount, 0) ?? 0;
-  const gpuCapacity = monitoringSummary?.gpuCount ?? 4; // GPU 현황 (mock: 4x RTX 3060)
+  const gpuCapacity = monitoringSummary?.gpuCount ?? 0;
   const gpuUtil = monitoringSummary?.avgGpuUtil ?? 0;
 
   return (
@@ -173,7 +183,7 @@ export default function CostOptimizationPage() {
         </div>
 
         <div className="page-mt-16">
-          <GpuOverrunBanner />
+          <GpuOverrunBanner cluster={cluster} />
         </div>
 
         <div className="page-mt-16">
@@ -208,7 +218,9 @@ export default function CostOptimizationPage() {
         </div>
       </div>
 
-      {estimateOpen && <DeploymentEstimateModal onClose={() => setEstimateOpen(false)} />}
+      {estimateOpen && (
+        <DeploymentEstimateModal onClose={() => setEstimateOpen(false)} clusterId={cluster} />
+      )}
     </main>
   );
 }

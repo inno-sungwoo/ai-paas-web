@@ -1,5 +1,6 @@
 // monitoring-dashboard page
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useGetClusters } from '@/hooks/service/clusters';
 import {
   BreadCrumb,
   LineChart,
@@ -24,8 +25,6 @@ import { GpuStatusTable } from '@/components/features/monitoring/GpuStatusTable'
 import { SkeletonCard } from '@/components/ui/skeleton';
 
 type OptionType = { text: string; value: string };
-
-const clusterOptions = [{ text: 'innogrid-aikube', value: 'innogrid-aikube' }];
 
 interface PodNsRow {
   namespace: string;
@@ -52,15 +51,37 @@ const podColumns = [
 
 export default function MonitoringPage() {
   const { pagination, setPagination } = useTablePagination();
-  const [selectedValue, setSelectedValue] = useState<OptionType>(clusterOptions[0]);
+  const { clusters } = useGetClusters();
+  const clusterOptions = useMemo<OptionType[]>(
+    () =>
+      clusters.map((c: any) => ({
+        text: c.monitStatus === 'ACTIVE' ? c.id : `${c.id} (${c.monitStatus})`,
+        value: c.id,
+      })),
+    [clusters],
+  );
+  const [selectedValue, setSelectedValue] = useState<OptionType | null>(null);
 
-  const cluster = selectedValue?.value ?? 'innogrid-aikube';
-  const { summary } = useGetMonitoringSummary(cluster);
-  const { releases, isPending: releasesLoading } = useGetMonitoringReleases(cluster);
-  const { alerts } = useGetMonitoringAlerts(cluster);
-  const { nodeResource } = useGetNodeResourceUsage(cluster);
-  const { performance } = useGetPerformanceMetrics(cluster);
-  const { pods: podData } = useGetPodsByNamespace(cluster);
+  useEffect(() => {
+    // 첫 ACTIVE 클러스터를 우선 선택, 없으면 첫 클러스터
+    if (!selectedValue && clusters.length > 0) {
+      const firstActive = (clusters as any[]).find((c) => c.monitStatus === 'ACTIVE');
+      const target = firstActive ?? clusters[0];
+      setSelectedValue({ text: target.id, value: target.id });
+    }
+  }, [clusters, selectedValue]);
+
+  const cluster = selectedValue?.value ?? '';
+  const selectedClusterMeta = (clusters as any[]).find((c) => c.id === cluster);
+  const isActive = selectedClusterMeta?.monitStatus === 'ACTIVE';
+  // 비활성 클러스터에는 PromQL 호출 자체를 막아 503/타임아웃 방지
+  const effectiveCluster = isActive ? cluster : '';
+  const { summary } = useGetMonitoringSummary(effectiveCluster);
+  const { releases, isPending: releasesLoading } = useGetMonitoringReleases(effectiveCluster);
+  const { alerts } = useGetMonitoringAlerts(effectiveCluster);
+  const { nodeResource } = useGetNodeResourceUsage(effectiveCluster);
+  const { performance } = useGetPerformanceMetrics(effectiveCluster);
+  const { pods: podData } = useGetPodsByNamespace(effectiveCluster);
 
   const cpuUtil = nodeResource?.cpuUtil ?? 0;
   const memUtil = nodeResource?.memoryUtil ?? 0;
@@ -93,6 +114,25 @@ export default function MonitoringPage() {
           value={selectedValue}
           onChange={onChangeSelect}
         />
+
+        {cluster && !isActive && (
+          <div className="page-mt-16 rounded-md border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800">
+            <div className="font-semibold">
+              "{cluster}" 클러스터의 모니터링이 활성화되지 않았습니다 (
+              {selectedClusterMeta?.monitStatus ?? 'UNKNOWN'})
+            </div>
+            {selectedClusterMeta?.monitLastError && (
+              <div className="mt-1 text-xs text-yellow-700">
+                {selectedClusterMeta.monitLastError}
+              </div>
+            )}
+            <div className="mt-2 text-xs text-yellow-700">
+              Prometheus 엔드포인트(<code>{selectedClusterMeta?.monitServerUrl ?? '-'}</code>)에 도달할
+              수 없거나 등록되지 않았습니다. 운영자가 <code>cluster.monit_server_url</code>을 점검해야
+              합니다.
+            </div>
+          </div>
+        )}
 
         {/* Summary Cards */}
         <div className="page-mt-16 flex gap-4">
