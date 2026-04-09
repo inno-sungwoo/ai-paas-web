@@ -3,7 +3,7 @@ import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-yaml';
 import 'prismjs/themes/prism.css';
-import { useGetChartValues, useDeployChart } from '@/hooks/service/catalog';
+import { useGetChartValues, useDeployChart, useUninstallRelease } from '@/hooks/service/catalog';
 import { useGetClusters } from '@/hooks/service/clusters';
 import { useCreateGpuReservation } from '@/hooks/service/cost';
 import { checkYamlSecurity, autoFixYaml } from '@/util/checkYamlSecurity';
@@ -30,7 +30,8 @@ export const DeployCatalogModal = ({
 }: DeployCatalogModalProps) => {
   const generateReleaseName = () => {
     const ts = Date.now().toString(36);
-    return `${chartName}-${ts}`;
+    const rand = Math.random().toString(36).slice(2, 6);
+    return `${chartName}-${ts}-${rand}`;
   };
   const [releaseName, setReleaseName] = useState(generateReleaseName);
   const [namespace, setNamespace] = useState('ai-pass3');
@@ -54,12 +55,9 @@ export const DeployCatalogModal = ({
   const INGRESS_DOMAIN = '192.168.201.171.nip.io';
 
   if (chartValues?.valuesContent && !valuesLoaded) {
-    // helm show values 결과에 WARNING 라인이 포함될 수 있으므로 제거
-    let cleanValues = chartValues.valuesContent
-      .split('\n')
-      .filter((line) => !line.startsWith('WARNING:') && !line.startsWith('Repository '))
-      .join('\n')
-      .trimStart();
+    // 백엔드에서 stderr를 분리하여 전달하므로 별도 필터링은 필요 없지만,
+    // 혹시 모를 안전망으로 leading whitespace 정리만 수행
+    let cleanValues = chartValues.valuesContent.trimStart();
     // ingress host를 자동 설정 ({릴리즈이름}.aipaas)
     cleanValues = cleanValues.replace(
       /^(\s*#?\s*host:\s*).*$/m,
@@ -70,7 +68,9 @@ export const DeployCatalogModal = ({
   }
 
   const deployMutation = useDeployChart();
+  const uninstallMutation = useUninstallRelease();
   const createReservation = useCreateGpuReservation();
+  const [conflictReleaseName, setConflictReleaseName] = useState<string>('');
   const securityWarnings = step !== 'form' ? checkYamlSecurity(valuesContent) : [];
   const [pendingReservation, setPendingReservation] = useState<ReservationParams | undefined>();
 
@@ -85,8 +85,26 @@ export const DeployCatalogModal = ({
 
   const [deployError, setDeployError] = useState('');
 
+  const handleCleanupAndRetry = async () => {
+    if (!conflictReleaseName) return;
+    try {
+      await uninstallMutation.mutateAsync({
+        releaseName: conflictReleaseName,
+        clusterId,
+        namespace,
+      });
+      addToast('success', `기존 릴리즈 "${conflictReleaseName}"이(가) 정리되었습니다. 다시 배포를 진행합니다.`);
+      setConflictReleaseName('');
+      setDeployError('');
+      handleConfirmDeploy(pendingReservation);
+    } catch (e: any) {
+      addToast('error', `기존 릴리즈 정리에 실패했습니다: ${e?.message ?? ''}`);
+    }
+  };
+
   const handleConfirmDeploy = (reservationParams?: ReservationParams) => {
     setDeployError('');
+    setConflictReleaseName('');
     setPendingReservation(reservationParams);
     deployMutation.mutate(
       { repoName, chartName, releaseName, clusterId, namespace, version, valuesContent },
@@ -106,9 +124,10 @@ export const DeployCatalogModal = ({
             const body = await error.response?.json?.();
             const msg = body?.message || '';
             if (msg.includes('already exists')) {
-              setReleaseName(generateReleaseName());
+              // 충돌한 릴리즈명을 보존 → "정리 후 재시도" 버튼 노출
+              setConflictReleaseName(releaseName);
               setDeployError(
-                `릴리즈 이름 "${releaseName}"이(가) 이미 존재합니다. 새 이름이 자동 생성되었습니다.`
+                `릴리즈 이름 "${releaseName}"이(가) 이미 존재합니다. 기존 릴리즈를 정리 후 재시도하거나 새 이름으로 배포할 수 있습니다.`
               );
             } else if (msg.includes('Quota') || msg.includes('exceeded')) {
               setDeployError('GPU Quota를 초과했습니다. GPU가 반납되면 다시 시도하세요.');
@@ -257,7 +276,30 @@ export const DeployCatalogModal = ({
         </div>
         {deployError && (
           <div className="mb-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {deployError}
+            <div>{deployError}</div>
+            {conflictReleaseName && (
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleCleanupAndRetry}
+                  disabled={uninstallMutation.isPending || deployMutation.isPending}
+                  className="rounded bg-red-600 px-3 py-1.5 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {uninstallMutation.isPending ? '정리 중...' : '기존 릴리즈 정리 후 재시도'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReleaseName(generateReleaseName());
+                    setConflictReleaseName('');
+                    setDeployError('');
+                  }}
+                  className="rounded border border-red-300 bg-white px-3 py-1.5 text-xs text-red-700 hover:bg-red-50"
+                >
+                  새 이름 생성
+                </button>
+              </div>
+            )}
           </div>
         )}
         <div className="flex justify-end gap-2">

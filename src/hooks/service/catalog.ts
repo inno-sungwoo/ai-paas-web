@@ -97,6 +97,25 @@ export const useDeployChart = () => {
   });
 };
 
+export const useUninstallRelease = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { releaseName: string; clusterId: string; namespace: string }) => {
+      const searchParams: Record<string, string> = {
+        clusterId: params.clusterId,
+        namespace: params.namespace,
+      };
+      return api
+        .delete(`charts/releases/${params.releaseName}`, { searchParams })
+        .json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['charts'] });
+      queryClient.invalidateQueries({ queryKey: ['monitoring'] });
+    },
+  });
+};
+
 export const useGetReleases = (clusterId: string, namespace?: string) => {
   const { data, isPending, isError } = useQuery({
     queryKey: ['charts', 'releases', clusterId, namespace],
