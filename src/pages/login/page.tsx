@@ -24,7 +24,7 @@ export default function LoginPage() {
         onSuccess: (data) => {
           setTokens(data.access_token, data.refresh_token);
 
-          navigate('/service');
+          navigate('/infra-management/monitoring-dashboard');
         },
         onError: (error) => {
           let message = '로그인에 실패했습니다.';

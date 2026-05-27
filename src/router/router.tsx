@@ -44,6 +44,8 @@ import CustomModelCreateHuggingfacePage from '@/pages/model/model-catalog/create
 import CustomModelCreateEtriPage from '@/pages/model/model-catalog/create/etri/page';
 import MemberCreatePage from '@/pages/member-management/create/page';
 import MemberEditPage from '@/pages/member-management/[id]/edit/page';
+import CostOptimizationPage from '../pages/infra-management/cost-optimization/page';
+import AuditLogPage from '../pages/infra-management/audit-log/page';
 
 export const router = createBrowserRouter([
   {
@@ -346,6 +348,22 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<></>}>
                 <EventPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'cost-optimization',
+            element: (
+              <Suspense fallback={<></>}>
+                <CostOptimizationPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: 'audit-log',
+            element: (
+              <Suspense fallback={<></>}>
+                <AuditLogPage />
               </Suspense>
             ),
           },

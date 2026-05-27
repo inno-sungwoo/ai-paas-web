@@ -1,0 +1,325 @@
+import { useEffect, useState } from 'react';
+import Editor from 'react-simple-code-editor';
+import { highlight, languages } from 'prismjs';
+import 'prismjs/components/prism-yaml';
+import 'prismjs/themes/prism.css';
+import { useGetChartValues, useDeployChart, useUninstallRelease } from '@/hooks/service/catalog';
+import { useGetClusters } from '@/hooks/service/clusters';
+import { useCreateGpuReservation } from '@/hooks/service/cost';
+import { checkYamlSecurity, autoFixYaml } from '@/util/checkYamlSecurity';
+import { SecurityCheckPopup } from './SecurityCheckPopup';
+import { DeploymentEstimateModal, type ReservationParams } from '../cost/DeploymentEstimateModal';
+import { useToast } from '@/components/ui/toast';
+
+interface DeployCatalogModalProps {
+  repoName: string;
+  chartName: string;
+  chartVersion: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+type Step = 'form' | 'security' | 'estimate';
+
+export const DeployCatalogModal = ({
+  repoName,
+  chartName,
+  chartVersion,
+  onClose,
+  onSuccess,
+}: DeployCatalogModalProps) => {
+  const generateReleaseName = () => {
+    const ts = Date.now().toString(36);
+    const rand = Math.random().toString(36).slice(2, 6);
+    return `${chartName}-${ts}-${rand}`;
+  };
+  const [releaseName, setReleaseName] = useState(generateReleaseName);
+  const [namespace, setNamespace] = useState('ai-pass3');
+  const [clusterId, setClusterId] = useState('');
+  const { clusters } = useGetClusters();
+  useEffect(() => {
+    if (!clusterId && clusters.length > 0) {
+      setClusterId(clusters[0].id);
+    }
+  }, [clusters, clusterId]);
+  const [version] = useState(chartVersion);
+  const [step, setStep] = useState<Step>('form');
+  const { addToast } = useToast();
+
+  // version 파라미터 없이 호출 — 최신 버전 values를 가져옴 (version 지정 시 캐시 미스 방지)
+  const { chartValues, isPending: valuesLoading } = useGetChartValues(repoName, chartName);
+  const [valuesContent, setValuesContent] = useState('');
+  const [valuesLoaded, setValuesLoaded] = useState(false);
+
+  // DNS 설정 없이 접속 가능하도록 nip.io 사용 (나중에 내부 DNS 설정 후 'aipaas'로 변경)
+  const INGRESS_DOMAIN = '192.168.201.171.nip.io';
+
+  if (chartValues?.valuesContent && !valuesLoaded) {
+    // 백엔드에서 stderr를 분리하여 전달하므로 별도 필터링은 필요 없지만,
+    // 혹시 모를 안전망으로 leading whitespace 정리만 수행
+    let cleanValues = chartValues.valuesContent.trimStart();
+    // ingress host를 자동 설정 ({릴리즈이름}.aipaas)
+    cleanValues = cleanValues.replace(
+      /^(\s*#?\s*host:\s*).*$/m,
+      `  host: ${releaseName}.${INGRESS_DOMAIN}`
+    );
+    setValuesContent(cleanValues);
+    setValuesLoaded(true);
+  }
+
+  const deployMutation = useDeployChart();
+  const uninstallMutation = useUninstallRelease();
+  const createReservation = useCreateGpuReservation();
+  const [conflictReleaseName, setConflictReleaseName] = useState<string>('');
+  const securityWarnings = step !== 'form' ? checkYamlSecurity(valuesContent) : [];
+  const [pendingReservation, setPendingReservation] = useState<ReservationParams | undefined>();
+
+  const handleDeploy = () => {
+    const warnings = checkYamlSecurity(valuesContent);
+    if (warnings.length > 0) {
+      setStep('security');
+    } else {
+      setStep('estimate');
+    }
+  };
+
+  const [deployError, setDeployError] = useState('');
+
+  const handleCleanupAndRetry = async () => {
+    if (!conflictReleaseName) return;
+    try {
+      await uninstallMutation.mutateAsync({
+        releaseName: conflictReleaseName,
+        clusterId,
+        namespace,
+      });
+      addToast('success', `기존 릴리즈 "${conflictReleaseName}"이(가) 정리되었습니다. 다시 배포를 진행합니다.`);
+      setConflictReleaseName('');
+      setDeployError('');
+      handleConfirmDeploy(pendingReservation);
+    } catch (e: any) {
+      addToast('error', `기존 릴리즈 정리에 실패했습니다: ${e?.message ?? ''}`);
+    }
+  };
+
+  const handleConfirmDeploy = (reservationParams?: ReservationParams) => {
+    setDeployError('');
+    setConflictReleaseName('');
+    setPendingReservation(reservationParams);
+    deployMutation.mutate(
+      { repoName, chartName, releaseName, clusterId, namespace, version, valuesContent },
+      {
+        onSuccess: () => {
+          // 배포 성공 후에만 GPU 예약 생성
+          if (reservationParams) {
+            createReservation.mutate(reservationParams);
+          }
+          addToast('success', `"${releaseName}" 배포가 시작되었습니다.`);
+          onSuccess();
+          onClose();
+        },
+        onError: async (error: any) => {
+          // 배포 실패 → reservation은 생성하지 않음 (고아 예약 방지)
+          try {
+            const body = await error.response?.json?.();
+            const msg = body?.message || '';
+            if (msg.includes('already exists')) {
+              // 충돌한 릴리즈명을 보존 → "정리 후 재시도" 버튼 노출
+              setConflictReleaseName(releaseName);
+              setDeployError(
+                `릴리즈 이름 "${releaseName}"이(가) 이미 존재합니다. 기존 릴리즈를 정리 후 재시도하거나 새 이름으로 배포할 수 있습니다.`
+              );
+            } else if (msg.includes('Quota') || msg.includes('exceeded')) {
+              setDeployError('GPU Quota를 초과했습니다. GPU가 반납되면 다시 시도하세요.');
+            } else if (msg.includes('no chart version found') || msg.includes('not found in')) {
+              setDeployError('차트 버전을 찾을 수 없습니다. 버전을 확인해주세요.');
+            } else if (msg.includes('YAML') || msg.includes('parse')) {
+              setDeployError('values.yaml 형식이 올바르지 않습니다. YAML 문법을 확인해주세요.');
+            } else if (msg.includes('connect') || msg.includes('timeout')) {
+              setDeployError('클러스터에 연결할 수 없습니다. 네트워크를 확인해주세요.');
+            } else {
+              setDeployError(msg || '배포에 실패했습니다. 다시 시도해주세요.');
+            }
+          } catch {
+            setDeployError('배포에 실패했습니다. 다시 시도해주세요.');
+          }
+          setStep('form');
+        },
+      }
+    );
+  };
+
+  if (step === 'security') {
+    return (
+      <SecurityCheckPopup
+        warnings={securityWarnings}
+        onEdit={() => setStep('form')}
+        onAutoFix={() => {
+          setValuesContent(autoFixYaml(valuesContent));
+          setStep('form');
+        }}
+        onProceed={() => setStep('estimate')}
+      />
+    );
+  }
+
+  if (step === 'estimate') {
+    return (
+      <DeploymentEstimateModal
+        onClose={() => setStep('form')}
+        onConfirm={handleConfirmDeploy}
+        confirmLabel="배포"
+        isConfirming={deployMutation.isPending}
+        releaseName={releaseName}
+        namespace={namespace}
+        clusterId={clusterId}
+      />
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="w-[640px] rounded-lg bg-white p-6 shadow-xl">
+        <h3 className="mb-4 text-lg font-semibold text-[#1a1a1a]">차트 배포 - {chartName}</h3>
+        <div className="mb-4 space-y-3">
+          <div>
+            <label className="mb-1 block text-xs text-[#525252]">릴리즈 이름</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={releaseName}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  setReleaseName(name);
+                  setValuesContent((v) =>
+                    v.replace(/^(\s*host:\s*).*$/m, `  host: ${name}.${INGRESS_DOMAIN}`)
+                  );
+                }}
+                placeholder="my-release"
+                className="flex-1 rounded border border-[#e8e8e8] px-3 py-2 text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const name = generateReleaseName();
+                  setReleaseName(name);
+                  setValuesContent((v) =>
+                    v.replace(/^(\s*host:\s*).*$/m, `  host: ${name}.${INGRESS_DOMAIN}`)
+                  );
+                }}
+                className="shrink-0 rounded border border-[#e8e8e8] px-3 py-2 text-xs text-[#525252] hover:bg-[#f5f5f5]"
+                title="새 이름 생성"
+              >
+                자동 생성
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="mb-1 block text-xs text-[#525252]">클러스터</label>
+              <select
+                value={clusterId}
+                onChange={(e) => setClusterId(e.target.value)}
+                className="w-full rounded border border-[#e8e8e8] px-3 py-2 text-sm"
+              >
+                {clusters.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#525252]">네임스페이스</label>
+              <input
+                type="text"
+                value={namespace}
+                onChange={(e) => setNamespace(e.target.value)}
+                className="w-full rounded border border-[#e8e8e8] px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#525252]">버전</label>
+              <input
+                type="text"
+                value={version}
+                readOnly
+                className="w-full rounded border border-[#e8e8e8] bg-[#f5f5f5] px-3 py-2 text-sm text-[#999]"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-[#525252]">
+              values.yaml
+              {valuesLoading && <span className="ml-2 text-[#999]">(로딩 중...)</span>}
+            </label>
+            <div className="max-h-[320px] overflow-auto rounded border border-[#e8e8e8]">
+              <Editor
+                value={valuesContent}
+                onValueChange={setValuesContent}
+                highlight={(code) => highlight(code, languages.yaml, 'yaml')}
+                padding={12}
+                style={{
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  minHeight: 280,
+                }}
+                placeholder={
+                  valuesLoading
+                    ? 'values.yaml을 불러오는 중입니다...'
+                    : '# values.yaml 내용을 입력하세요. 비워두면 기본값으로 배포됩니다.'
+                }
+              />
+            </div>
+          </div>
+        </div>
+        {deployError && (
+          <div className="mb-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div>{deployError}</div>
+            {conflictReleaseName && (
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleCleanupAndRetry}
+                  disabled={uninstallMutation.isPending || deployMutation.isPending}
+                  className="rounded bg-red-600 px-3 py-1.5 text-xs text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {uninstallMutation.isPending ? '정리 중...' : '기존 릴리즈 정리 후 재시도'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReleaseName(generateReleaseName());
+                    setConflictReleaseName('');
+                    setDeployError('');
+                  }}
+                  className="rounded border border-red-300 bg-white px-3 py-1.5 text-xs text-red-700 hover:bg-red-50"
+                >
+                  새 이름 생성
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded border border-[#e8e8e8] px-4 py-2 text-sm text-[#525252] hover:bg-[#f5f5f5]"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={handleDeploy}
+            disabled={!releaseName || !namespace}
+            className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            배포
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
